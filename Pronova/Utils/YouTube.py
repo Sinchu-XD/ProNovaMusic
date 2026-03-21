@@ -7,7 +7,11 @@ from YouTubeMusic.Search import Search
 from YouTubeMusic.Stream import get_stream, get_video_stream
 from YouTubeMusic.Playlist import get_playlist_songs
 
-from Pronova.Database import is_stream_valid, set_stream_cache, is_stream_valid
+from Pronova.Database import (
+    get_stream_cache,
+    set_stream_cache,
+    is_stream_valid
+)
 
 
 COOKIES_PATH = "cookies.txt"
