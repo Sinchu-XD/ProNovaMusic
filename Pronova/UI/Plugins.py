@@ -41,12 +41,11 @@ def utf16_len(text: str):
 
 
 def build_caption(title, url, duration, requester, header="Nᴏᴡ Pʟᴀʏɪɴɢ", position=None):
+    title = (title or "Unknown")[:30]
 
-    title = title[:30]
-
-    if hasattr(requester, "id"):
-        user_id = requester.id
-        name = clean_html(requester.first_name)
+    if isinstance(requester, dict):
+        user_id = requester.get("id")
+        name = clean_html(str(requester.get("first_name", "User")))
     else:
         user_id = None
         name = clean_html(str(requester))
@@ -106,14 +105,12 @@ VC_END_DELETE_AFTER = 10
 
 
 def control_buttons():
-    buttons = [[
+    return InlineKeyboardMarkup([[
         InlineKeyboardButton("▷", callback_data="vc_resume"),
         InlineKeyboardButton("II", callback_data="vc_pause"),
         InlineKeyboardButton("▢", callback_data="vc_end"),
         InlineKeyboardButton("‣‣I", callback_data="vc_skip"),
-    ]]
-
-    return InlineKeyboardMarkup(buttons)
+    ]])
 
 
 class Plugin:
@@ -124,12 +121,11 @@ class Plugin:
         self.now_playing_msg = {}
 
     async def on_song_start(self, chat_id, song):
-
         caption, entities = build_caption(
-            song.title,
-            song.url,
-            song.duration_text,
-            song.requested_by
+            song.get("title"),
+            song.get("url"),
+            song.get("duration_text"),
+            song.get("requested_by")
         )
 
         old = self.now_playing_msg.get(chat_id)
@@ -142,11 +138,11 @@ class Plugin:
 
         try:
             thumb = await get_thumb(
-                title=song.title,
-                duration=song.duration_text,
-                thumbnail=song.thumb,
-                channel=getattr(song, "channel", "YouTube"),
-                views=getattr(song, "views", "Unknown"),
+                title=song.get("title"),
+                duration=song.get("duration_text"),
+                thumbnail=song.get("thumb"),
+                channel=song.get("channel", "YouTube"),
+                views=song.get("views", "Unknown"),
                 videoid="np"
             )
 
@@ -163,67 +159,24 @@ class Plugin:
         except Exception:
             print(format_exc())
 
-    async def on_seek(self, chat_id, song, seconds):
-
-        msg = self.now_playing_msg.get(chat_id)
-        if not msg:
-            return
-
-        direction = "Fᴏʀᴡᴀʀᴅᴇᴅ" if seconds > 0 else "Rᴇᴡɪɴᴅᴇᴅ"
-
-        caption, entities = build_caption(
-            song.title,
-            song.url,
-            song.duration_text,
-            song.requested_by,
-            header=f"{direction} {abs(seconds)}s\n\nNᴏᴡ Pʟᴀʏɪɴɢ"
-        )
-
-        try:
-            await msg.delete()
-        except:
-            pass
-
-        try:
-            thumb = await get_thumb(
-                title=song.title,
-                duration=song.duration_text,
-                thumbnail=song.thumb,
-                videoid="seek"
-            )
-
-            new_msg = await self.app.send_photo(
-                chat_id,
-                photo=thumb,
-                caption=caption,
-                caption_entities=entities,
-                reply_markup=control_buttons()
-            )
-
-            self.now_playing_msg[chat_id] = new_msg
-
-        except Exception:
-            print(format_exc())
-
     async def on_queue_add(self, chat_id, song, position):
-
         if position == 1:
             return
 
         caption, entities = build_caption(
-            song.title,
-            song.url,
-            song.duration_text,
-            song.requested_by,
+            song.get("title"),
+            song.get("url"),
+            song.get("duration_text"),
+            song.get("requested_by"),
             header="Aᴅᴅᴇᴅ Tᴏ Qᴜᴇᴜᴇ",
             position=position
         )
 
         try:
             thumb = await get_thumb(
-                title=song.title,
-                duration=song.duration_text,
-                thumbnail=song.thumb,
+                title=song.get("title"),
+                duration=song.get("duration_text"),
+                thumbnail=song.get("thumb"),
                 videoid="queue"
             )
 
@@ -240,7 +193,6 @@ class Plugin:
             print(format_exc())
 
     async def on_song_end(self, chat_id, song):
-
         msg = self.now_playing_msg.pop(chat_id, None)
 
         if msg:
@@ -250,7 +202,6 @@ class Plugin:
                 pass
 
     async def on_vc_closed(self, chat_id):
-
         msg = self.now_playing_msg.pop(chat_id, None)
 
         if msg:
