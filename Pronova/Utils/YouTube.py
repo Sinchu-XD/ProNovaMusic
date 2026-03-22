@@ -11,7 +11,9 @@ from YouTubeMusic.Playlist import get_playlist_songs
 from Pronova.Database.YouTube import (
     get_stream_cache,
     set_stream_cache,
-    is_stream_valid
+    is_stream_valid,
+    get_search_cache,
+    set_search_cache
 )
 
 from Pronova.Utils.Logger import LOGGER
@@ -62,36 +64,32 @@ def format_duration(d):
 
 
 async def safe_extract(extractor, url, cookies):
-    for i in range(4):
+    for _ in range(4):
         try:
-            LOGGER.debug(f"[EXTRACT TRY {i+1}] {url}")
-
             if inspect.iscoroutinefunction(extractor):
                 return await extractor(url, cookies)
             return await asyncio.to_thread(extractor, url, cookies)
-
         except Exception:
-            LOGGER.error(f"[EXTRACT ERROR] {url}\n{format_exc()}")
             await asyncio.sleep(1)
-
-    LOGGER.error(f"[EXTRACT FAILED] {url}")
     return None
 
 
 async def resolve(query, video=False, user_id=None):
     try:
-        LOGGER.info(f"[RESOLVE] Query: {query} | Video: {video}")
+        LOGGER.info(f"[RESOLVE] {query}")
 
         cookies = COOKIES_PATH if (COOKIES_PATH and os.path.exists(COOKIES_PATH)) else None
         extractor = get_video_stream if video else get_stream
 
-        # PLAYLIST
         if PLAYLIST_REGEX.search(query):
-            LOGGER.info("[PLAYLIST DETECTED]")
+            key = f"playlist::{query}"
+
+            cache = await get_search_cache(key)
+            if cache:
+                return cache
 
             playlist = await get_playlist_songs(query)
             if not playlist:
-                LOGGER.warning("[EMPTY PLAYLIST]")
                 return None
 
             playlist = playlist[:20]
@@ -102,11 +100,18 @@ async def resolve(query, video=False, user_id=None):
             ]
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            return [r for r in results if r and not isinstance(r, Exception)]
+            final = [r for r in results if r and not isinstance(r, Exception)]
 
-        # DIRECT URL (FIXED)
+            await set_search_cache(key, final)
+
+            return final
+
         if YOUTUBE_REGEX.search(query):
-            LOGGER.info("[DIRECT URL DETECTED]")
+            key = f"url::{query}"
+
+            cache = await get_search_cache(key)
+            if cache:
+                return cache
 
             try:
                 res = await Search(query, limit=1)
@@ -114,21 +119,15 @@ async def resolve(query, video=False, user_id=None):
                 if res and res.get("main_results"):
                     item = res["main_results"][0]
 
-                    # ensure correct URL match
                     if item.get("url") and query not in item.get("url"):
-                        LOGGER.warning("[SEARCH MISMATCH → FIXING URL]")
                         item["url"] = query
-
-                    LOGGER.info("[URL METADATA FETCHED]")
                 else:
-                    LOGGER.warning("[URL SEARCH FAILED → FALLBACK]")
                     item = {"url": query, "title": "Unknown"}
 
             except Exception:
-                LOGGER.error(f"[URL METADATA ERROR]\n{format_exc()}")
                 item = {"url": query, "title": "Unknown"}
 
-            return [
+            result = [
                 await process(
                     item,
                     query,
@@ -139,18 +138,24 @@ async def resolve(query, video=False, user_id=None):
                 )
             ]
 
-        # SEARCH MODE
-        LOGGER.info("[SEARCH MODE]")
+            await set_search_cache(key, result)
+
+            return result
+
+        key = f"search::{query}"
+
+        cache = await get_search_cache(key)
+        if cache:
+            return cache
 
         res = await Search(query, limit=1)
 
         if not res or not res.get("main_results"):
-            LOGGER.warning("[NO SEARCH RESULTS]")
             return None
 
         item = res["main_results"][0]
 
-        return [
+        result = [
             await process(
                 item,
                 item.get("url"),
@@ -160,6 +165,10 @@ async def resolve(query, video=False, user_id=None):
                 user_id
             )
         ]
+
+        await set_search_cache(key, result)
+
+        return result
 
     except Exception:
         LOGGER.error(f"[RESOLVE ERROR]\n{format_exc()}")
@@ -174,18 +183,12 @@ async def process(item, url, extractor, cookies, video, user_id):
 
         if stream:
             if not await is_stream_valid(stream):
-                LOGGER.warning("[CACHE EXPIRED]")
                 stream = None
 
         if not stream:
-            LOGGER.info(f"[EXTRACT STREAM] {url}")
-
             stream = await safe_extract(extractor, url, cookies)
-
             if not stream:
-                LOGGER.error("[STREAM EXTRACTION FAILED]")
                 return None
-
             await set_stream_cache(key, stream)
 
         return clean({
@@ -212,8 +215,6 @@ async def process(item, url, extractor, cookies, video, user_id):
 async def get_valid_stream(song):
     try:
         if not await is_stream_valid(song["stream"]):
-            LOGGER.warning("[STREAM EXPIRED → REFETCHING]")
-
             new = await resolve(
                 query=song["url"],
                 video=song["is_video"],
@@ -226,5 +227,4 @@ async def get_valid_stream(song):
         return song["stream"]
 
     except Exception:
-        LOGGER.error(f"[STREAM VALIDATION ERROR]\n{format_exc()}")
         return song.get("stream")
