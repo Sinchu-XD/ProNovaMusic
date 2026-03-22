@@ -1,107 +1,151 @@
 from pyrogram import filters
-from pyrogram.types import Message
-
-from Pronova.Bot import user
-from Pronova.Player.Play import play
-from Pronova.Utils.YouTube import resolve, get_valid_stream
-from Pronova.Utils.Queue import queue
+from Pronova.Bot import bot, engine
 from Pronova.Utils.Assistant import get_ass
+from Pronova.Utils.Font import sc
+from Pronova.Utils.Permission import is_allowed
+
+from Pronova.Database.Songs import inc_song_play
+from Pronova.Database.Bans import is_banned, is_gbanned
+from Pronova.Database.Users import add_user
+from Pronova.Database.Chats import add_chat
+from Pronova.Database.Auth import is_auth
 
 
-async def play_next(chat_id):
-    from Pronova.Utils.Queue import queue
-    from Pronova.Utils.YouTube import get_valid_stream
-    from Pronova.Player.Play import play
-    from Pronova.Player import Core as core
+async def check_ban(m):
+    if not m.from_user:
+        return True
 
-    next_song = await queue.next(chat_id)
+    uid = m.from_user.id
+    chat_id = m.chat.id
 
-    if not next_song:
-        print("QUEUE EMPTY, LEAVING VC")
-        try:
-            await core.core.leave_call(chat_id)
-        except Exception as e:
-            print("LEAVE ERROR:", e)
+    if await is_gbanned(uid):
+        await m.reply(sc("you are gbanned"))
+        return True
+
+    if await is_banned(chat_id, uid):
+        await m.reply(sc("you are banned in this chat"))
+        return True
+
+    return False
+
+
+async def safe_delete(m):
+    try:
+        await m.delete()
+    except:
+        pass
+
+
+async def register_usage(m):
+    if not m.from_user:
         return
 
-    print("PLAYING NEXT:", next_song.get("title"))
+    try:
+        await add_user(m.from_user)
+        await add_chat(m.chat)
+    except Exception as e:
+        print("Usage Register Error:", e)
+
+
+async def handle_play(m, force=False, video=False):
+
+    if not m.from_user:
+        return
+
+    uid = m.from_user.id
+    chat_id = m.chat.id
+
+    if await check_ban(m):
+        return
+
+    if force:
+        member = await bot.get_chat_member(chat_id, uid)
+        if member.status not in ("administrator", "creator"):
+            return await m.reply(sc("admins only"))
+    else:
+        if not await is_auth(chat_id, uid):
+            if not await is_allowed(bot, m, notify=True):
+                return
+
+    if not await get_ass(chat_id, m):
+        return
+
+    if force:
+        try:
+            await engine.vc.stop(chat_id)
+        except:
+            pass
+
+    reply = m.reply_to_message
+
+    if reply and (reply.voice or reply.audio or reply.video):
+
+        try:
+            path = await reply.download()
+        except:
+            return await m.reply(sc("download failed"))
+
+        try:
+            song, title = await engine.vc.play_file(
+                chat_id,
+                path,
+                m.from_user.mention,
+                reply=reply,
+                video=video
+            )
+        except:
+            return await m.reply(sc("unable to play media"))
+
+        if not song:
+            return await m.reply(sc("unable to play media"))
+
+        await inc_song_play(chat_id, title)
+        return
+
+    if len(m.command) < 2:
+        return await m.reply(sc("give song name"))
+
+    query = m.text.split(None, 1)[1]
 
     try:
-        stream = await get_valid_stream(next_song)
-
-        await play(
-            core.core,
+        song, title = await engine.vc.play(
             chat_id,
-            stream,
-            video=False,
-            plugin=core.plugin,
-            song=next_song
+            query,
+            m.from_user.mention,
+            video=video
         )
+    except:
+        return await m.reply(sc("unable to play song"))
 
-        queue.set_start(chat_id)
+    if not song:
+        return await m.reply(sc("unable to play song"))
 
-    except Exception as e:
-        print("PLAY NEXT ERROR:", e)
+    await inc_song_play(chat_id, title or query)
 
 
-def register(app, core):
-    core.on_end = play_next
+@bot.on_message(filters.command(["play"]) & filters.group)
+async def play(_, m):
+    await safe_delete(m)
+    await register_usage(m)
+    await handle_play(m)
 
-    @app.on_message(filters.command("play") & filters.group)
-    async def play_cmd(_, message: Message):
-        chat_id = message.chat.id
-        user_id = message.from_user.id
 
-        if user is not None:
-            ok = await get_ass(chat_id, message)
-            if not ok:
-                return
-    
-        if message.reply_to_message and message.reply_to_message.audio:
-            audio = message.reply_to_message.audio
+@bot.on_message(filters.command(["playforce"]) & filters.group)
+async def playforce(_, m):
+    await safe_delete(m)
+    await register_usage(m)
+    await handle_play(m, force=True)
 
-            song = {
-                "title": audio.title or "Telegram Audio",
-                "duration": audio.duration,
-                "duration_text": str(audio.duration),
-                "url": None,
-                "stream": audio.file_id,
-                "thumb": None,
-                "channel": "Telegram",
-                "views": "Local",
-                "is_video": False,
-                "requested_by": {"id": user_id, "first_name": message.from_user.first_name}
-            }
 
-            pos = await queue.add(chat_id, song)
+@bot.on_message(filters.command(["vplay"]) & filters.group)
+async def vplay(_, m):
+    await safe_delete(m)
+    await register_usage(m)
+    await handle_play(m, video=True)
 
-            if pos == 1:
-                await play(core.core, chat_id, song["stream"], video=False, plugin=core.plugin, song=song)
-                queue.set_start(chat_id)
-            else:
-                if core.plugin:
-                    await core.plugin.on_queue_add(chat_id, song, pos)
 
-            return
-
-        query = message.text.split(None, 1)
-
-        if len(query) < 2:
-            return await message.reply_text("Give song name or URL")
-
-        results = await resolve(query[1], video=False, user_id=user_id)
-
-        if not results:
-            return await message.reply_text("No results found")
-
-        for song in results:
-            pos = await queue.add(chat_id, song)
-
-            if pos == 1:
-                stream = await get_valid_stream(song)
-                await play(core.core, chat_id, stream, video=False, plugin=core.plugin, song=song)
-                queue.set_start(chat_id)
-            else:
-                if core.plugin:
-                    await core.plugin.on_queue_add(chat_id, song, pos)
-                    
+@bot.on_message(filters.command(["vplayforce"]) & filters.group)
+async def vplayforce(_, m):
+    await safe_delete(m)
+    await register_usage(m)
+    await handle_play(m, force=True, video=True)
