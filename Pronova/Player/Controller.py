@@ -46,8 +46,8 @@ class VoiceController:
         try:
             results = await resolve_query(
                 query,
-                video=video,
-                cookies=self.cookies
+                video=video
+                
             )
         except Exception:
             LOGGER.error(f"[RESOLVE ERROR] {query}\n{format_exc()}")
