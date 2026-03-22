@@ -5,7 +5,7 @@ from Pronova.Utils.YouTube import resolve as resolve_query
 from Pronova.Utils.Models import Song
 from .Play import Player
 from .Settings import settings
-from Pronova.logger import LOGGER
+from Pronova.Utils.Logger import LOGGER
 
 
 class VoiceController:
