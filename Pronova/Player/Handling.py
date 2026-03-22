@@ -1,43 +1,56 @@
 from traceback import format_exc
 
-from pytgcalls import filters
 from pytgcalls.types import StreamEnded, ChatUpdate
 
 
 def setup_handlers(core, plugin=None, on_end=None, on_vc_closed=None):
 
-    @core.on_update(filters.stream_end())
-    async def stream_end(_, update: StreamEnded):
-        chat_id = update.chat_id
-
+    @core.on_update()
+    async def handler(_, update):
         try:
-            current = None
 
-            try:
-                from Pronova.Utils.Queue import queue
-                current = await queue.get_current(chat_id)
-            except:
-                pass
+            if isinstance(update, StreamEnded):
+                chat_id = update.chat_id
 
-            if plugin and current:
-                await plugin.on_song_end(chat_id, current)
+                print("STREAM ENDED:", chat_id)
 
-            if on_end:
-                await on_end(chat_id)
+                current = None
+
+                try:
+                    from Pronova.Utils.Queue import queue
+                    current = await queue.get_current(chat_id)
+                except Exception as e:
+                    print("QUEUE ERROR:", e)
+
+                if plugin and current:
+                    try:
+                        await plugin.on_song_end(chat_id, current)
+                    except Exception as e:
+                        print("PLUGIN ERROR:", e)
+
+                if on_end:
+                    try:
+                        await on_end(chat_id)
+                    except Exception as e:
+                        print("PLAY NEXT ERROR:", e)
+
+            elif isinstance(update, ChatUpdate):
+                if update.status == ChatUpdate.Status.CLOSED_VOICE_CHAT:
+                    chat_id = update.chat_id
+
+                    print("VC CLOSED:", chat_id)
+
+                    if plugin:
+                        try:
+                            await plugin.on_vc_closed(chat_id)
+                        except Exception as e:
+                            print("PLUGIN VC ERROR:", e)
+
+                    if on_vc_closed:
+                        try:
+                            await on_vc_closed(chat_id)
+                        except Exception as e:
+                            print("VC CLOSED ERROR:", e)
 
         except Exception:
-            print(f"[on_end error]\n{format_exc()}")
-
-    @core.on_update(filters.chat_update(ChatUpdate.Status.CLOSED_VOICE_CHAT))
-    async def vc_closed(_, update: ChatUpdate):
-        try:
-            chat_id = update.chat_id
-
-            if plugin:
-                await plugin.on_vc_closed(chat_id)
-
-            if on_vc_closed:
-                await on_vc_closed(chat_id)
-
-        except Exception:
-            print(f"[vc_closed error]\n{format_exc()}")
+            print(f"[handler error]\n{format_exc()}")
