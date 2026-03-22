@@ -12,7 +12,7 @@ async def play_next(chat_id):
     from Pronova.Utils.Queue import queue
     from Pronova.Utils.YouTube import get_valid_stream
     from Pronova.Player.Play import play
-    from Pronova import core
+    from Pronova.Player import Core as core
 
     next_song = await queue.next(chat_id)
 
