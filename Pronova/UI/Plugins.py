@@ -192,7 +192,7 @@ class Plugin:
         except Exception:
             print(format_exc())
 
-        async def on_seek(self, chat_id, song, seconds):
+    async def on_seek(self, chat_id, song, seconds):
 
         msg = self.now_playing_msg.get(chat_id)
         if not msg:
