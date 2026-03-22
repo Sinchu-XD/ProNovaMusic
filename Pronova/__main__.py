@@ -3,7 +3,7 @@ import asyncio
 from Pronova.Bot.Core import bot, user
 from Pronova.Player.Core import EngineCore
 
-from Pronova.UI.Plugin import Plugin
+from Pronova.UI.Plugins import Plugin
 
 from Pronova.Plugins.Plays.play import play as play_module
 #from Play import vplay as vplay_module
