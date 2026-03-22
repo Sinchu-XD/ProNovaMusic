@@ -1,6 +1,6 @@
 import asyncio
 
-from Pronova.Utils.YouTube import resolve_query
+from Pronova.Utils.YouTube import resolve as resolve_query
 from Pronova.Utils.Models import Song
 from .Play import Player
 from .Settings import settings
