@@ -47,7 +47,10 @@ class MusicQueue:
                 q.appendleft(current)
                 return current
 
-            return q[0] if q else None
+            if not q:
+                return None
+
+            return q[0]
 
     async def skip(self, chat_id):
         return await self.next(chat_id)
@@ -75,6 +78,7 @@ class MusicQueue:
                 song = q[index]
                 del q[index]
                 return song
+            return None
 
     async def move(self, chat_id, old, new):
         async with self._lock(chat_id):
@@ -93,7 +97,6 @@ class MusicQueue:
             current = q[0]
             rest = q[1:]
             random.shuffle(rest)
-
             self.queues[chat_id] = deque([current] + rest)
 
     async def remove_by_user(self, chat_id, user_id):
@@ -121,6 +124,7 @@ class MusicQueue:
             if len(voters) >= required:
                 self.votes[chat_id] = set()
                 return True
+
             return False
 
     def set_loop(self, chat_id, count: int):
