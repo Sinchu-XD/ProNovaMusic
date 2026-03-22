@@ -14,7 +14,7 @@ from Pronova.Database.YouTube import (
     is_stream_valid
 )
 
-from Pronova.Logger import LOGGER
+from Pronova.Utils.Logger import LOGGER
 from Config import COOKIES_PATH
 
 
