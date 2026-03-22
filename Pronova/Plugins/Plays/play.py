@@ -69,7 +69,7 @@ async def handle_play(m, force=False, video=False):
     if force:
         try:
             member = await bot.get_chat_member(chat_id, uid)
-            if member.status not in ("administrator", "creator"):
+            if member.status not in ("administrator", "creator", "owner"):
                 LOGGER.warning(f"[FORCE DENIED] {uid} not admin in {chat_id}")
                 return await m.reply(sc("admins only"))
         except Exception:
