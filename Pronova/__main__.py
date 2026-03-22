@@ -1,6 +1,6 @@
 import asyncio
 
-from Bot.Core import bot, user
+from Pronova.Bot.Core import bot, user
 from Pronova.Player.Core import EngineCore
 
 from Pronova.UI.Plugin import Plugin
