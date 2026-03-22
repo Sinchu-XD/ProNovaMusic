@@ -14,6 +14,17 @@ from Pronova.Database.Auth import is_auth
 
 from Pronova.Utils.Logger import LOGGER
 
+from pyrogram.enums import ChatMemberStatus
+
+async def is_admin(chat_id, user_id):
+    try:
+        member = await bot.get_chat_member(chat_id, user_id)
+        return member.status in (
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.OWNER
+        )
+    except Exception:
+        return False
 
 async def check_ban(m):
     if not m.from_user:
@@ -67,11 +78,9 @@ async def handle_play(m, force=False, video=False):
         return
 
     if force:
-        try:
-            member = await bot.get_chat_member(chat_id, uid)
-            if member.status not in ("administrator", "creator", "owner"):
-                LOGGER.warning(f"[FORCE DENIED] {uid} not admin in {chat_id}")
-                return await m.reply(sc("admins only"))
+        if not await is_admin(chat_id, uid):
+            LOGGER.warning(f"[FORCE DENIED] {uid} not admin in {chat_id}")
+            return await m.reply(sc("admins only"))
         except Exception:
             LOGGER.error(f"[ADMIN CHECK ERROR]\n{format_exc()}")
             return
