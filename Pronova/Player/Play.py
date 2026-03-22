@@ -1,6 +1,6 @@
 import time
 
-from AbhiCalls.queue import SongQueue
+from Pronova.Utils.Queue import SongQueue
 
 
 class Player:
