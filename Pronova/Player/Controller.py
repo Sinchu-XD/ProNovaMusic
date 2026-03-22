@@ -44,7 +44,11 @@ class VoiceController:
         LOGGER.info(f"[PLAY] Query: {query} | Chat: {chat_id}")
 
         try:
-            results = await resolve_query(query, self.cookies, video=video)
+            results = await resolve_query(
+                query,
+                video=video,
+                cookies=self.cookies
+            )
         except Exception:
             LOGGER.error(f"[RESOLVE ERROR] {query}\n{format_exc()}")
             return False, "Resolver failed"
