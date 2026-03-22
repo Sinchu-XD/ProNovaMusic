@@ -7,7 +7,7 @@ from YouTubeMusic.Search import Search
 from YouTubeMusic.Stream import get_stream, get_video_stream
 from YouTubeMusic.Playlist import get_playlist_songs
 
-from Pronova.Database import (
+from Pronova.Database.YouTube import (
     get_stream_cache,
     set_stream_cache,
     is_stream_valid
@@ -26,10 +26,12 @@ def yt_thumbnail(url):
             vid = url.split("watch?v=")[1].split("&")[0]
         elif "youtu.be/" in url:
             vid = url.split("youtu.be/")[1].split("?")[0]
+        elif "shorts/" in url:
+            vid = url.split("shorts/")[1].split("?")[0]
         else:
             return None
         return f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
-    except:
+    except Exception:
         return None
 
 
@@ -39,7 +41,7 @@ def extract_channel(item):
         if isinstance(c, dict):
             return c.get("name")
         return c
-    except:
+    except Exception:
         return None
 
 
@@ -58,29 +60,27 @@ def format_duration(d):
 
 
 async def safe_extract(extractor, url, cookies):
-    for _ in range(2):
+    for _ in range(4):
         try:
             if inspect.iscoroutinefunction(extractor):
                 return await extractor(url, cookies)
             return await asyncio.to_thread(extractor, url, cookies)
-        except Exception as e:
-            print(f"Extract retry failed: {e}")
-            continue
-    print("Extraction Failed:", url)
+        except Exception:
+            await asyncio.sleep(1)
     return None
 
 
 async def resolve(query, video=False, user_id=None):
     try:
-        cookies = COOKIES_PATH if os.path.exists(COOKIES_PATH) else None
+        cookies = COOKIES_PATH if (COOKIES_PATH and os.path.exists(COOKIES_PATH)) else None
         extractor = get_video_stream if video else get_stream
-
-        print("Query:", query)
 
         if PLAYLIST_REGEX.search(query):
             playlist = await get_playlist_songs(query)
             if not playlist:
                 return None
+
+            playlist = playlist[:20]
 
             tasks = [
                 process(item, item.get("url"), extractor, cookies, video, user_id)
@@ -109,8 +109,7 @@ async def resolve(query, video=False, user_id=None):
         item = res["main_results"][0]
         return [await process(item, item.get("url"), extractor, cookies, video, user_id)]
 
-    except Exception as e:
-        print("Resolver Error:", e)
+    except Exception:
         return None
 
 
@@ -119,6 +118,10 @@ async def process(item, url, extractor, cookies, video, user_id):
         key = f"{url}_{video}"
 
         stream = await get_stream_cache(key)
+
+        if stream:
+            if not await is_stream_valid(stream):
+                stream = None
 
         if not stream:
             stream = await safe_extract(extractor, url, cookies)
@@ -142,15 +145,13 @@ async def process(item, url, extractor, cookies, video, user_id):
             }
         })
 
-    except Exception as e:
-        print(f"Process error: {e}")
+    except Exception:
         return None
 
 
 async def get_valid_stream(song):
     try:
         if not await is_stream_valid(song["stream"]):
-            print("Refreshing stream")
             new = await resolve(
                 song["url"],
                 video=song["is_video"],
@@ -158,9 +159,10 @@ async def get_valid_stream(song):
             )
             if new:
                 song["stream"] = new[0]["stream"]
+
         return song["stream"]
-    except Exception as e:
-        print(f"Stream validation error: {e}")
+
+    except Exception:
         return song.get("stream")
 
 
