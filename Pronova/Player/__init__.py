@@ -8,7 +8,7 @@ from .Controls import (
     mute,
     unmute
 )
-from .handling import setup_handlers
+from .Handling import setup_handlers
 
 __all__ = [
     "EngineCore",
