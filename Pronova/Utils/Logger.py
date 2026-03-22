@@ -18,14 +18,13 @@ logging.basicConfig(
     ]
 )
 
-# Reduce spam logs
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
 logging.getLogger("pytgcalls").setLevel(logging.WARNING)
 logging.getLogger("ntgcalls").setLevel(logging.WARNING)
 
 LOGGER = logging.getLogger("Pronova")
 
-#
+
 def set_debug(enabled: bool):
     if enabled:
         LOGGER.setLevel(logging.DEBUG)
