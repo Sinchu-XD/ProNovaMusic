@@ -3,7 +3,7 @@ import asyncio
 from Pronova.Bot.Core import bot, user, engine
 from Pronova.Player import idle
 from Pronova.UI.Plugins import Plugin
-
+import Pronova.Plugins.Plays
 
 async def main():
     await bot.start()
