@@ -2,7 +2,7 @@ import time
 from traceback import format_exc
 
 from Pronova.Utils.Queue import SongQueue
-from Pronova.Logger import LOGGER
+from Pronova.Utils.Logger import LOGGER
 
 
 class Player:
