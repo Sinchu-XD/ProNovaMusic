@@ -5,7 +5,7 @@ from traceback import format_exc
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, MessageEntity
 from pyrogram import enums
 
-from Pronova.Utils.thumbnail import get_thumb
+from Pronova.Utils.Thumbnail import get_thumb
 
 import random
 import re
