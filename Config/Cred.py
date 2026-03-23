@@ -21,6 +21,8 @@ SESSION_STRING = os.getenv("SESSION_STRING")
 MONGO_URL = get_env("MONGO_URL", required=True)
 DB_NAME = get_env("DB_NAME", "Pronova")
 
+RAPID_API_KEY = get_env("RAPID_API_KEY")
+
 OWNER_ID = int(get_env("OWNER_ID", required=True))
 
 COMMAND_PREFIX = os.getenv("PREFIX", "/")
