@@ -11,7 +11,6 @@ from YouTubeMusic.Playlist import get_playlist_songs
 from Pronova.Database.YouTube import (
     get_stream_cache,
     set_stream_cache,
-    is_stream_valid,
     get_search_cache,
     set_search_cache
 )
@@ -80,11 +79,6 @@ async def resolve(query, video=False, user_id=None):
         extractor = get_video_stream if video else get_stream
 
         if PLAYLIST_REGEX.search(query):
-            key = f"playlist::{query}"
-            cache = await get_search_cache(key)
-            if cache:
-                return cache
-
             playlist = await get_playlist_songs(query)
             if not playlist:
                 return None
@@ -97,17 +91,9 @@ async def resolve(query, video=False, user_id=None):
             ]
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            final = [r for r in results if r and not isinstance(r, Exception)]
-
-            await set_search_cache(key, final)
-            return final
+            return [r for r in results if r and not isinstance(r, Exception)]
 
         if YOUTUBE_REGEX.search(query):
-            key = f"url::{query}"
-            cache = await get_search_cache(key)
-            if cache:
-                return cache
-
             try:
                 res = await Search(query, limit=1)
                 if res and res.get("main_results"):
@@ -118,17 +104,8 @@ async def resolve(query, video=False, user_id=None):
             except:
                 item = {"url": query, "title": "Unknown", "views": 0}
 
-            result = [
-                await process(item, query, extractor, cookies, video, user_id)
-            ]
-
-            await set_search_cache(key, result)
-            return [x for x in result if x]
-
-        key = f"search::{query}"
-        cache = await get_search_cache(key)
-        if cache:
-            return cache
+            result = await process(item, query, extractor, cookies, video, user_id)
+            return [result] if result else None
 
         res = await Search(query, limit=1)
         if not res or not res.get("main_results"):
@@ -136,12 +113,8 @@ async def resolve(query, video=False, user_id=None):
 
         item = res["main_results"][0]
 
-        result = [
-            await process(item, item.get("url"), extractor, cookies, video, user_id)
-        ]
-
-        await set_search_cache(key, result)
-        return [x for x in result if x]
+        result = await process(item, item.get("url"), extractor, cookies, video, user_id)
+        return [result] if result else None
 
     except Exception:
         LOGGER.error(format_exc())
@@ -157,15 +130,10 @@ async def process(item, url, extractor, cookies, video, user_id):
 
         stream = await get_stream_cache(key)
 
-        if stream and not await is_stream_valid(stream):
-            stream = None
-
         if not stream:
             stream = await safe_extract(extractor, url, cookies)
 
             if not stream:
-                LOGGER.warning("[EXTRACT FAIL] Retrying without cache/cookies")
-
                 stream = await safe_extract(extractor, url, None)
 
             if not stream or not isinstance(stream, str) or not stream.startswith("http"):
@@ -193,13 +161,13 @@ async def process(item, url, extractor, cookies, video, user_id):
     except Exception:
         LOGGER.error(format_exc())
         return None
-        
+
 
 async def get_valid_stream(song):
     try:
         stream = song.get("stream")
 
-        if stream and await is_stream_valid(stream):
+        if stream:
             return stream
 
         new = await resolve(
@@ -208,27 +176,12 @@ async def get_valid_stream(song):
             user_id=song["requested_by"]["id"]
         )
 
-        LOGGER.info(f"[DEBUG RESOLVE RETURN] TYPE: {type(new)} DATA: {new}")
-
         if not new:
-            LOGGER.error("[DEBUG] resolve returned None or empty")
             return None
-
-        if not isinstance(new, list):
-            LOGGER.error("[DEBUG] resolve not list")
-            return None
-
-        for i, item in enumerate(new):
-            LOGGER.info(f"[DEBUG ITEM {i}] TYPE: {type(item)} DATA: {item}")
 
         first = next((x for x in new if x and isinstance(x, dict)), None)
 
-        if not first:
-            LOGGER.error("[DEBUG] no valid dict found in resolve result")
-            return None
-
-        if not first.get("stream"):
-            LOGGER.error("[DEBUG] stream missing in first item")
+        if not first or not first.get("stream"):
             return None
 
         stream = first["stream"]
