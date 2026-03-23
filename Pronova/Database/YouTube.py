@@ -1,5 +1,6 @@
 import aiohttp
 import time
+import urllib.parse
 
 from .Core import db
 
@@ -10,22 +11,42 @@ _session = None
 async def get_session():
     global _session
     if _session is None or _session.closed:
-        timeout = aiohttp.ClientTimeout(total=8)
+        timeout = aiohttp.ClientTimeout(total=12)
         _session = aiohttp.ClientSession(timeout=timeout)
     return _session
 
 
-async def is_stream_valid(url):
+def get_expire_time(url):
+    try:
+        parsed = urllib.parse.urlparse(url)
+        qs = urllib.parse.parse_qs(parsed.query)
+        expire = qs.get("expire")
+        if not expire:
+            return None
+        return int(expire[0])
+    except:
+        return None
+
+
+async def is_stream_valid(url, logger=None):
     try:
         session = await get_session()
 
-        # ✅ Try HEAD first
-        try:
-            async with session.head(url, allow_redirects=True) as resp:
-                if resp.status == 200:
-                    return True
-        except:
-            pass
+        expire_time = get_expire_time(url)
+        now = int(time.time())
+
+        if logger:
+            logger.info(f"[STREAM URL] {url}")
+
+        if expire_time:
+            remaining = expire_time - now
+            if logger:
+                logger.info(f"[STREAM EXPIRE] {expire_time} | Remaining: {remaining}s")
+
+            if remaining <= 0:
+                if logger:
+                    logger.warning("[STREAM STATUS] EXPIRED")
+                return False
 
         headers = {
             "Range": "bytes=0-512",
@@ -33,24 +54,31 @@ async def is_stream_valid(url):
         }
 
         async with session.get(url, headers=headers, allow_redirects=True) as resp:
-
             if resp.status not in (200, 206):
+                if logger:
+                    logger.warning(f"[STREAM STATUS] INVALID STATUS {resp.status}")
                 return False
 
             content_type = resp.headers.get("Content-Type", "")
-
             if "audio" not in content_type and "video" not in content_type:
+                if logger:
+                    logger.warning(f"[STREAM STATUS] INVALID TYPE {content_type}")
                 return False
 
-            # REAL DATA CHECK
             chunk = await resp.content.read(512)
             if not chunk:
+                if logger:
+                    logger.warning("[STREAM STATUS] EMPTY DATA")
                 return False
+
+            if logger:
+                logger.info("[STREAM STATUS] VALID")
 
             return True
 
     except Exception as e:
-        print("Stream check error:", e)
+        if logger:
+            logger.error(f"[STREAM ERROR] {e}")
         return False
 
 
@@ -104,7 +132,6 @@ async def set_search_cache(key, data):
         )
     except Exception:
         pass
-
 
 
 async def close_session():
