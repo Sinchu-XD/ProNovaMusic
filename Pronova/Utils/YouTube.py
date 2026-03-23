@@ -150,14 +150,20 @@ async def resolve(query, video=False, user_id=None):
 
 async def process(item, url, extractor, cookies, video, user_id):
     try:
+        if not url or not isinstance(url, str):
+            return None
+
         key = f"{url}_{video}"
 
         stream = await get_stream_cache(key)
 
-        if not stream or not await is_stream_valid(stream):
+        if stream and not await is_stream_valid(stream):
+            stream = None
+
+        if not stream:
             stream = await safe_extract(extractor, url, cookies)
 
-            if not stream or not isinstance(stream, str):
+            if not stream or not isinstance(stream, str) or not stream.startswith("http"):
                 return None
 
             await set_stream_cache(key, stream)
@@ -167,7 +173,7 @@ async def process(item, url, extractor, cookies, video, user_id):
             "url": url,
             "duration": item.get("duration"),
             "duration_text": format_duration(item.get("duration")),
-            "views": item.get("views"),
+            "views": item.get("views") or 0,
             "channel": extract_channel(item),
             "thumb": item.get("thumbnail") or yt_thumbnail(url),
             "stream": stream,
@@ -181,33 +187,37 @@ async def process(item, url, extractor, cookies, video, user_id):
     except Exception:
         LOGGER.error(format_exc())
         return None
-
+        
 
 async def get_valid_stream(song):
     try:
         stream = song.get("stream")
 
-        if not stream or not await is_stream_valid(stream):
+        if stream and await is_stream_valid(stream):
+            return stream
+
+        for _ in range(2):
             new = await resolve(
                 query=song["url"],
                 video=song["is_video"],
                 user_id=song["requested_by"]["id"]
             )
 
-            if not new or not isinstance(new, list):
-                return None
+            if new and isinstance(new, list):
+                first = next((x for x in new if x and isinstance(x, dict) and x.get("stream")), None)
 
-            first = next((x for x in new if x and isinstance(x, dict)), None)
+                if first:
+                    stream = first["stream"]
+                    song["stream"] = stream
 
-            if not first or not first.get("stream"):
-                return None
+                    await set_stream_cache(f"{song['url']}_{song['is_video']}", stream)
 
-            stream = first["stream"]
-            song["stream"] = stream
+                    return stream
 
-            await set_stream_cache(f"{song['url']}_{song['is_video']}", stream)
+            await asyncio.sleep(1)
 
-        return stream
+        LOGGER.error("[STREAM FAILED COMPLETELY]")
+        return None
 
     except Exception:
         LOGGER.error(format_exc())
