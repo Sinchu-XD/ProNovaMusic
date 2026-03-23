@@ -123,7 +123,7 @@ async def resolve(query, video=False, user_id=None):
             ]
 
             await set_search_cache(key, result)
-            return result
+            return [x for x in result if x]
 
         key = f"search::{query}"
         cache = await get_search_cache(key)
@@ -141,7 +141,7 @@ async def resolve(query, video=False, user_id=None):
         ]
 
         await set_search_cache(key, result)
-        return result
+        return [x for x in result if x]
 
     except Exception:
         LOGGER.error(format_exc())
@@ -194,10 +194,15 @@ async def get_valid_stream(song):
                 user_id=song["requested_by"]["id"]
             )
 
-            if not new or not new[0].get("stream"):
+            if not new or not isinstance(new, list):
                 return None
 
-            stream = new[0]["stream"]
+            first = next((x for x in new if x and isinstance(x, dict)), None)
+
+            if not first or not first.get("stream"):
+                return None
+
+            stream = first["stream"]
             song["stream"] = stream
 
             await set_stream_cache(f"{song['url']}_{song['is_video']}", stream)
