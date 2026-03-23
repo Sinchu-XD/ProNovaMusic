@@ -183,20 +183,19 @@ async def process(item, url, extractor, cookies, video, user_id):
 
         stream = await get_stream_cache(key)
 
-        # ❌ Cache invalid ho to hatao
         if stream:
-            if not is_valid_url(stream) or not await is_stream_valid(stream):
+            if not isinstance(stream, str) or not stream.startswith("http"):
                 stream = None
 
-        # 🔄 Fresh extract
         if not stream:
             stream = await safe_extract(extractor, url, cookies)
 
-            # ❌ Agar invalid hai to skip
-            if not is_valid_url(stream):
+            if not stream or not isinstance(stream, str) or not stream.startswith("http"):
                 return None
 
             await set_stream_cache(key, stream)
+
+        LOGGER.info(f"[PROCESS STREAM] {stream}")
 
         return clean({
             "title": item.get("title"),
@@ -218,7 +217,6 @@ async def process(item, url, extractor, cookies, video, user_id):
         LOGGER.error(f"[PROCESS ERROR]\n{format_exc()}")
         return None
 
-
 async def get_valid_stream(song):
     try:
         stream = song.get("stream")
@@ -226,18 +224,26 @@ async def get_valid_stream(song):
         if not stream or not isinstance(stream, str) or not stream.startswith("http"):
             stream = None
 
-        if not stream or not await is_stream_valid(stream):
+        if not stream or not await is_stream_valid(stream, LOGGER):
+            LOGGER.warning("[STREAM REFRESH] Fetching new stream")
+
             new = await resolve(
                 query=song["url"],
                 video=song["is_video"],
                 user_id=song["requested_by"]["id"]
             )
 
-            if new and new[0].get("stream"):
-                stream = new[0]["stream"]
-                song["stream"] = stream
+            if not new or not new[0].get("stream"):
+                LOGGER.error("[STREAM ERROR] Failed to refresh stream")
+                return None
+
+            stream = new[0]["stream"]
+            song["stream"] = stream
+
+            LOGGER.info(f"[NEW STREAM] {stream}")
 
         return stream
 
-    except Exception:
-        return song.get("stream")
+    except Exception as e:
+        LOGGER.error(f"[GET STREAM ERROR] {e}")
+        return None
