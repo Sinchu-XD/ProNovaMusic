@@ -12,6 +12,26 @@ async def get_user_data(message=None, cq=None):
     return None, None
 
 
+async def check_ban(m):
+    if not m.from_user:
+        return True
+
+    uid = m.from_user.id
+    chat_id = m.chat.id
+
+    if await is_gbanned(uid):
+        LOGGER.warning(f"[GBANNED USER] {uid}")
+        await m.reply(sc("you are gbanned"))
+        return True
+
+    if await is_banned(chat_id, uid):
+        LOGGER.warning(f"[BANNED IN CHAT] {uid} in {chat_id}")
+        await m.reply(sc("you are banned in this chat"))
+        return True
+
+    return False
+
+
 async def is_admin(client, chat_id, user_id):
     try:
         member = await client.get_chat_member(chat_id, user_id)
