@@ -73,7 +73,9 @@ async def safe_extract(extractor, url, cookies):
             await asyncio.sleep(1)
     return None
 
-
+def is_valid_url(url):
+    return isinstance(url, str) and url.startswith("http") and len(url) > 20
+    
 async def resolve(query, video=False, user_id=None):
     try:
         LOGGER.info(f"[RESOLVE] {query}")
