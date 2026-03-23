@@ -43,14 +43,18 @@ async def setup_database():
         (db.sudo_users, "user_id", True),
         (db.yt_stream_cache, "_id", True),
         (db.yt_search_cache, "_id", True),
+
+        (db.verified_users, "_id", True),
+        (db.warns, "_id", True),
+        (db.bio_cache, "_id", True),
     ]
 
     try:
         for collection, field, unique in indexes:
             try:
                 await collection.create_index(field, unique=unique)
-            except:
-                continue
+            except Exception:
+                pass
 
         await db.banned.create_index(
             [("chat_id", 1), ("user_id", 1)],
@@ -60,6 +64,16 @@ async def setup_database():
         await db.auth_users.create_index(
             [("chat_id", 1), ("user_id", 1)],
             unique=True
+        )
+
+        await db.warns.create_index(
+            "time",
+            expireAfterSeconds=86400
+        )
+
+        await db.bio_cache.create_index(
+            "time",
+            expireAfterSeconds=3600
         )
 
         print("MongoDB Indexes Ready")
