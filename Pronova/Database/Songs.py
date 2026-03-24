@@ -52,3 +52,24 @@ async def inc_song_play(chat=None, user=None, title=None):
     )
 
     LOGGER.debug(f"Song tracked → chat={cid}, user={uid}, title={title}")
+
+async def top_song_players(limit: int = 5):
+    counter = Counter()
+
+    async for g in db.group_stats.find({}, {"users": 1}):
+
+        users = g.get("users")
+
+        if not isinstance(users, dict):
+            continue
+
+        for uid, count in users.items():
+            try:
+                counter[int(uid)] += int(count)
+            except:
+                continue
+
+    result = counter.most_common(limit)
+
+    LOGGER.info(f"Top song players: {result}")
+    return result
