@@ -99,7 +99,7 @@ async def get_ass(chat_id, m=None):
                         "Assistant Is Banned In This Group\n"
                         "Bot does not have ban/unban rights.\n"
                         "Please Unban It Manually Using\n"
-                        f" /unban {ASSISTAN_ID} or /unban {username}"
+                        f" /unban {ASSISTANT_ID} or /unban {username}"
                     )
                 )
             return False
