@@ -161,6 +161,12 @@ class VoiceController:
     async def skip(self, chat_id):
         return await self.player.skip(chat_id)
 
+    async def previous(self, chat_id):
+        return await self.player.previous(chat_id)
+
+    def loop(self, chat_id, count=None):
+        return self.player.set_loop(chat_id, count)
+
     async def pause(self, chat_id):
         await self.player.pause(chat_id)
 
@@ -175,6 +181,9 @@ class VoiceController:
 
     async def volume(self, chat_id, volume: int):
         await self.player.volume(chat_id, volume)
+
+    def eta(self, chat_id):
+        return self.player.eta(chat_id)
 
 
     async def _on_end(self, chat_id):
