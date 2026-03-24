@@ -92,7 +92,7 @@ async def get_ass(chat_id, m=None):
 
         if not (bot_member.privileges and bot_member.privileges.can_restrict_members):
             if m:
-                await m.reply(sc("Assistant Is Banned In This Group\nBot does not have ban/unban rights.\n Please Unban It Manually User /unban {ASSISTAN_ID} or /unban @{ASSISTANT_USERNAME}"))
+                await m.reply(sc("Assistant Is Banned In This Group\nBot does not have ban/unban rights.\n Please Unban It Manually Using")+ (" /unban {ASSISTAN_ID} or /unban @{ASSISTANT_USERNAME}")
             return False
 
         try:
