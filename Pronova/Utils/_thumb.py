@@ -33,7 +33,7 @@ ICONS_Y = BAR_Y + 48
 
 MAX_TITLE_WIDTH = 580
 
-DEFAULT_THUMB = "https://telegra.ph/file/9c8f8e5b6a1b8e9c.jpg"
+DEFAULT_THUMB = "https://picsum.photos/1280/720"
 
 def trim_to_width(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
     """Trim text to fit within max width, adding ellipsis if needed."""
