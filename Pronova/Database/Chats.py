@@ -26,6 +26,19 @@ async def add_chat(chat):
         upsert=True,
     )
 
+    await db.group_stats.update_one(
+        {"chat_id": cid},
+        {
+            "$setOnInsert": {
+                "chat_id": cid,
+                "users": {},
+                "songs": {},
+                "total": 0
+            }
+        },
+        upsert=True
+    )
+
     if res.upserted_id:
         await inc_lifetime("chats")
         await inc_daily("chats")
