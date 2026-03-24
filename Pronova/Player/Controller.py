@@ -8,6 +8,7 @@ from .Play import Player
 from .Settings import settings
 from Pronova.Utils.Logger import LOGGER
 
+LOGGER.setLevel("ERROR")
 
 class VoiceController:
     def __init__(self, engine, cookies: str | None = None):
