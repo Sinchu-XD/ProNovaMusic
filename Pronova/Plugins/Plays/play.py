@@ -1,15 +1,18 @@
 from pyrogram import filters
 from traceback import format_exc
+
 from Config import *
 
 from Pronova.Bot import bot, engine
 from Pronova.Utils.Assistant import get_ass
 from Pronova.Utils.Font import sc
 from Pronova.Utils.Allow import admin_only, check_ban
+from Pronova.Utils.Logger import LOGGER
 
 from Pronova.Database.Songs import inc_song_play
 from Pronova.Database.Users import add_user
 from Pronova.Database.Chats import add_chat
+from Pronova.Database import is_admin_only
 
 
 async def safe_delete(m):
@@ -41,12 +44,15 @@ async def handle_play(m, force=False, video=False):
     if await check_ban(message=m):
         return
 
+    mode = await is_admin_only(chat_id)
+
     if force:
         if not await admin_only(bot, message=m):
             return
     else:
-        if not await admin_only(bot, message=m):
-            return
+        if mode:
+            if not await admin_only(bot, message=m):
+                return
 
     if not await get_ass(chat_id, m):
         return
@@ -54,8 +60,8 @@ async def handle_play(m, force=False, video=False):
     if force:
         try:
             await engine.vc.stop(chat_id)
-        except Exception:
-            pass
+        except Exception as e:
+            LOGGER.error(f"[Force Stop Error] {e}")
 
     reply = m.reply_to_message
 
@@ -74,8 +80,9 @@ async def handle_play(m, force=False, video=False):
                 reply=reply,
                 video=video
             )
-        except Exception:
-            return await m.reply(sc("unable to play media"))
+        except Exception as e:
+            LOGGER.error(format_exc())
+            return await m.reply(sc(f"❌ Media Play Error:\n{e}"))
 
         if not song:
             return await m.reply(sc("unable to play media"))
@@ -96,8 +103,22 @@ async def handle_play(m, force=False, video=False):
             m.from_user.mention,
             video=video
         )
-    except Exception:
-        return await m.reply(sc("unable to play song"))
+
+    except Exception as e:
+        LOGGER.error(format_exc())
+
+        err = str(e)
+
+        if "CHANNEL_PRIVATE" in err:
+            return await m.reply(sc("assistant banned or not in chat"))
+
+        elif "No active voice chat" in err:
+            return await m.reply(sc("voice chat is not started"))
+
+        elif "ffmpeg" in err.lower():
+            return await m.reply(sc("ffmpeg issue on server"))
+
+        return await m.reply(sc(f"❌ Error:\n{err}"))
 
     if not song:
         return await m.reply(sc("unable to play song"))
