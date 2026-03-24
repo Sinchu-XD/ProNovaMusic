@@ -1,5 +1,6 @@
 from .Core import db
 from .Stats import inc_lifetime, inc_daily
+from Pronova.Utils.Logger import LOGGER
 
 
 def normalize_title(title: str) -> str:
@@ -15,17 +16,30 @@ def _to_int(x):
         return None
 
 
-async def inc_song_play(chat=None, title=None):
+async def inc_song_play(chat=None, user=None, title=None):
     await inc_lifetime("songs")
     await inc_daily("songs")
 
     cid = _to_int(chat)
+    uid = _to_int(user)
+
+
     if cid:
+        update_data = {
+            "$inc": {
+                "songs": 1,  # total songs in chat
+            }
+        }
+
+        if uid:
+            update_data["$inc"][f"users.{uid}"] = 1 
+
         await db.group_stats.update_one(
             {"chat_id": cid},
-            {"$inc": {"songs": 1}},
+            update_data,
             upsert=True,
         )
+
 
     title = normalize_title(title)
     if not title:
@@ -37,22 +51,4 @@ async def inc_song_play(chat=None, title=None):
         upsert=True,
     )
 
-
-async def most_played(limit: int = 10):
-    result = []
-
-    async for s in db.songs_stats.find(
-        {},
-        {"title": 1, "played": 1, "_id": 0}
-    ).sort("played", -1).limit(limit):
-
-        try:
-            title = s["title"]
-            played = int(s.get("played", 0))
-        except:
-            continue
-
-        if played > 0:
-            result.append((title, played))
-
-    return result
+    LOGGER.debug(f"Song tracked → chat={cid}, user={uid}, title={title}")
