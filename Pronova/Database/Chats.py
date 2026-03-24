@@ -44,3 +44,14 @@ async def add_chat(chat):
         await inc_lifetime("chats")
         await inc_daily("chats")
         LOGGER.info(f"New chat added: {cid}")
+
+async def total_chats():
+    return await db.chats.count_documents({})
+
+
+async def get_all_chats():
+    async for c in db.chats.find({}, {"chat_id": 1, "_id": 0}):
+        try:
+            yield int(c["chat_id"])
+        except:
+            continue
