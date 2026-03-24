@@ -1,3 +1,5 @@
+from Pronova.Utils.Logger import LOGGER
+
 import os
 import asyncio
 import random
@@ -44,63 +46,68 @@ def utf16_len(text: str):
 
 def build_caption(title, url, duration, requester, header="Nᴏᴡ Pʟᴀʏɪɴɢ", position=None):
 
-    title = title[:30]
+    try:
+        title = title[:30]
 
-    if hasattr(requester, "id"):
-        user_id = requester.id
-        name = clean_html(requester.first_name)
-    else:
-        user_id = None
-        name = clean_html(str(requester))
+        if hasattr(requester, "id"):
+            user_id = requester.id
+            name = clean_html(requester.first_name)
+        else:
+            user_id = None
+            name = clean_html(str(requester))
 
-    text = (
-        f"▫ {header} ▫\n\n"
-        f"▫ Tɪᴛʟᴇ : {title} ▫\n\n"
-        f"▫ Dᴜʀᴀᴛɪᴏɴ : {duration} ▫\n\n"
-        f"▫ Rᴇǫᴜᴇsᴛᴇᴅ Bʏ : {name} ▫"
-    )
-
-    if position:
-        text += f"\n\n▫ Pᴏsɪᴛɪᴏɴ : {position} ▫"
-
-    full = text
-    entities = []
-
-    for i, char in enumerate(full):
-        if char == "▫":
-            entities.append(
-                MessageEntity(
-                    type=enums.MessageEntityType.CUSTOM_EMOJI,
-                    offset=utf16_len(full[:i]),
-                    length=1,
-                    custom_emoji_id=random.choice(CUSTOM_EMOJI_IDS)
-                )
-            )
-
-    title_pos = full.find(title)
-    if title_pos != -1 and url:
-        entities.append(
-            MessageEntity(
-                type=enums.MessageEntityType.TEXT_LINK,
-                offset=utf16_len(full[:title_pos]),
-                length=utf16_len(title),
-                url=url
-            )
+        text = (
+            f"▫ {header} ▫\n\n"
+            f"▫ Tɪᴛʟᴇ : {title} ▫\n\n"
+            f"▫ Dᴜʀᴀᴛɪᴏɴ : {duration} ▫\n\n"
+            f"▫ Rᴇǫᴜᴇsᴛᴇᴅ Bʏ : {name} ▫"
         )
 
-    if user_id:
-        name_pos = full.find(name)
-        if name_pos != -1:
+        if position:
+            text += f"\n\n▫ Pᴏsɪᴛɪᴏɴ : {position} ▫"
+
+        full = text
+        entities = []
+
+        for i, char in enumerate(full):
+            if char == "▫":
+                entities.append(
+                    MessageEntity(
+                        type=enums.MessageEntityType.CUSTOM_EMOJI,
+                        offset=utf16_len(full[:i]),
+                        length=1,
+                        custom_emoji_id=random.choice(CUSTOM_EMOJI_IDS)
+                    )
+                )
+
+        title_pos = full.find(title)
+        if title_pos != -1 and url:
             entities.append(
                 MessageEntity(
                     type=enums.MessageEntityType.TEXT_LINK,
-                    offset=utf16_len(full[:name_pos]),
-                    length=utf16_len(name),
-                    url=f"tg://user?id={user_id}"
+                    offset=utf16_len(full[:title_pos]),
+                    length=utf16_len(title),
+                    url=url
                 )
             )
 
-    return full, entities
+        if user_id:
+            name_pos = full.find(name)
+            if name_pos != -1:
+                entities.append(
+                    MessageEntity(
+                        type=enums.MessageEntityType.TEXT_LINK,
+                        offset=utf16_len(full[:name_pos]),
+                        length=utf16_len(name),
+                        url=f"tg://user?id={user_id}"
+                    )
+                )
+
+        return full, entities
+
+    except Exception as e:
+        LOGGER.error(f"Error in build_caption: {e}", exc_info=True)
+        return "Error generating caption", []
 
 
 QUEUE_DELETE_AFTER = 30
@@ -108,34 +115,39 @@ VC_END_DELETE_AFTER = 10
 
 
 def control_buttons():
-    texts = os.getenv("TEXTS")
-    links = os.getenv("LINKS")
+    try:
+        texts = os.getenv("TEXTS")
+        links = os.getenv("LINKS")
 
-    buttons = [[
-        InlineKeyboardButton("▷", callback_data="vc_resume"),
-        InlineKeyboardButton("II", callback_data="vc_pause"),
-        InlineKeyboardButton("▢", callback_data="vc_end"),
-        InlineKeyboardButton("‣‣I", callback_data="vc_skip"),
-    ]]
+        buttons = [[
+            InlineKeyboardButton("▷", callback_data="vc_resume"),
+            InlineKeyboardButton("II", callback_data="vc_pause"),
+            InlineKeyboardButton("▢", callback_data="vc_end"),
+            InlineKeyboardButton("‣‣I", callback_data="vc_skip"),
+        ]]
 
-    if texts and links:
-        text_list = [t.strip() for t in texts.split(",")]
-        link_list = [l.strip() for l in links.split(",")]
+        if texts and links:
+            text_list = [t.strip() for t in texts.split(",")]
+            link_list = [l.strip() for l in links.split(",")]
 
-        row = []
+            row = []
 
-        for t, l in zip(text_list, link_list):
-            if t and l:
-                row.append(InlineKeyboardButton(t, url=l))
+            for t, l in zip(text_list, link_list):
+                if t and l:
+                    row.append(InlineKeyboardButton(t, url=l))
 
-                if len(row) == 2:
-                    buttons.append(row)
-                    row = []
+                    if len(row) == 2:
+                        buttons.append(row)
+                        row = []
 
-        if row:
-            buttons.append(row)
+            if row:
+                buttons.append(row)
 
-    return InlineKeyboardMarkup(buttons)
+        return InlineKeyboardMarkup(buttons)
+
+    except Exception as e:
+        LOGGER.error(f"Error in control_buttons: {e}", exc_info=True)
+        return InlineKeyboardMarkup([])
 
 
 class Plugin:
@@ -146,6 +158,7 @@ class Plugin:
         self.now_playing_msg = {}
 
     async def on_song_start(self, chat_id, song):
+        LOGGER.info(f"Song started in {chat_id}: {song.title}")
 
         caption, entities = build_caption(
             song.title,
@@ -159,8 +172,8 @@ class Plugin:
         if old:
             try:
                 await old.delete()
-            except:
-                pass
+            except Exception as e:
+                LOGGER.warning(f"Failed to delete old message: {e}")
 
         try:
             thumb = await generate(song)
@@ -175,10 +188,11 @@ class Plugin:
 
             self.now_playing_msg[chat_id] = msg
 
-        except:
-            pass
+        except Exception as e:
+            LOGGER.error(f"Error in on_song_start: {e}", exc_info=True)
 
     async def on_seek(self, chat_id, song, seconds):
+        LOGGER.info(f"Seek in {chat_id}: {seconds}s")
 
         msg = self.now_playing_msg.get(chat_id)
         if not msg:
@@ -196,8 +210,8 @@ class Plugin:
 
         try:
             await msg.delete()
-        except:
-            pass
+        except Exception as e:
+            LOGGER.warning(f"Seek delete failed: {e}")
 
         try:
             thumb = await generate(song)
@@ -212,10 +226,11 @@ class Plugin:
 
             self.now_playing_msg[chat_id] = new_msg
 
-        except:
-            pass
+        except Exception as e:
+            LOGGER.error(f"Error in on_seek: {e}", exc_info=True)
 
     async def on_queue_add(self, chat_id, song, position):
+        LOGGER.info(f"Song added to queue {chat_id}: {song.title} at {position}")
 
         if position == 1:
             return
@@ -241,28 +256,30 @@ class Plugin:
 
             asyncio.create_task(self._auto_delete(msg, QUEUE_DELETE_AFTER))
 
-        except:
-            pass
+        except Exception as e:
+            LOGGER.error(f"Error in on_queue_add: {e}", exc_info=True)
 
     async def on_song_end(self, chat_id, song):
+        LOGGER.info(f"Song ended in {chat_id}: {song.title}")
 
         msg = self.now_playing_msg.pop(chat_id, None)
 
         if msg:
             try:
                 await msg.delete()
-            except:
-                pass
+            except Exception as e:
+                LOGGER.warning(f"Failed deleting end msg: {e}")
 
     async def on_vc_closed(self, chat_id):
+        LOGGER.info(f"Voice chat closed in {chat_id}")
 
         msg = self.now_playing_msg.pop(chat_id, None)
 
         if msg:
             try:
                 await msg.delete()
-            except:
-                pass
+            except Exception as e:
+                LOGGER.warning(f"VC close delete failed: {e}")
 
         try:
             msg = await self.app.send_message(
@@ -272,13 +289,12 @@ class Plugin:
 
             asyncio.create_task(self._auto_delete(msg, VC_END_DELETE_AFTER))
 
-        except:
-            pass
+        except Exception as e:
+            LOGGER.error(f"Error in on_vc_closed: {e}", exc_info=True)
 
     async def _auto_delete(self, msg, delay):
-
         try:
             await asyncio.sleep(delay)
             await msg.delete()
-        except:
-            pass
+        except Exception as e:
+            LOGGER.warning(f"Auto delete failed: {e}")
