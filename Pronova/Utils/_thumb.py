@@ -6,6 +6,10 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 from .Models import Song as Track
 
+import hashlib
+
+song_id = hashlib.md5((song.url or song.title).encode()).hexdigest()
+
 # Modern frosted glass design constants
 PANEL_W, PANEL_H = 763, 545
 PANEL_X = (1280 - PANEL_W) // 2
@@ -30,6 +34,7 @@ ICONS_Y = BAR_Y + 48
 
 MAX_TITLE_WIDTH = 580
 
+DEFAULT_THUMB = "https://telegra.ph/file/9c8f8e5b6a1b8e9c.jpg"
 
 def trim_to_width(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
     """Trim text to fit within max width, adding ellipsis if needed."""
@@ -53,22 +58,35 @@ class Thumbnail:
             self.title_font = self.regular_font = ImageFont.load_default()
 
     async def save_thumb(self, output_path: str, url: str) -> str:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                with open(output_path, "wb") as f:
-                    f.write(await resp.read())
-            return output_path
+        if not url:
+            url = "https://telegra.ph/file/9c8f8e5b6a1b8e9c.jpg"
 
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    if resp.status != 200:
+                        raise Exception("Invalid Thumb")
+
+                    with open(output_path, "wb") as f:
+                        f.write(await resp.read())
+        except:
+        # fallback thumb
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://telegra.ph/file/9c8f8e5b6a1b8e9c.jpg") as resp:
+                    with open(output_path, "wb") as f:
+                        f.write(await resp.read())
+
+    return output_path
     async def generate(self, song: Track, size=(1280, 720)) -> str:
         """Generate thumbnail - downloads async, PIL operations in thread pool"""
         try:
-            temp = f"cache/temp_{song.id}.jpg"
-            output = f"cache/{song.id}_modern.png"
+            temp = f"cache/temp_{song_id}.jpg"
+            output = f"cache/{song_id}_modern.png"
             if os.path.exists(output):
                 return output
 
             # Download thumbnail (async operation)
-            await self.save_thumb(temp, song.thumbnail)
+            await self.save_thumb(temp, song.thumb)
             
             # **PERFORMANCE FIX**: Run PIL operations in thread executor to avoid blocking event loop
             # This prevents lag when generating thumbnails for multiple groups simultaneously
@@ -76,8 +94,8 @@ class Thumbnail:
                 None, self._generate_sync, temp, output, song, size
             )
         except Exception:
-            return config.DEFAULT_THUMB
-
+            return DEFAULT_THUMB
+            
     def _generate_sync(self, temp: str, output: str, song: Track, size=(1280, 720)) -> str:
         """Synchronous PIL operations - runs in thread pool"""
         try:
@@ -124,7 +142,7 @@ class Thumbnail:
             # Metadata
             draw.text(
                 (TITLE_X, META_Y),
-                f"YouTube | {song.view_count or 'Unknown Views'}",
+                f"YouTube | {song.views or 'Unknown Views'}",
                 fill="black",
                 font=self.regular_font
             )
@@ -169,4 +187,4 @@ class Thumbnail:
 
             return output
         except Exception:
-            return config.DEFAULT_THUMB
+            return DEFAULT_THUMB
