@@ -75,76 +75,49 @@ async def get_ass(chat_id, m=None):
         if not bot_member.privileges or not bot_member.privileges.can_invite_users:
             raise ChatAdminRequired
 
-        for _ in range(2):
-            try:
-                link = await bot.export_chat_invite_link(chat_id)
-                await user.join_chat(link)
-                await asyncio.sleep(2)
-
-                if await is_assistant_in_chat(chat_id):
-                    return True
-
-            except UserAlreadyParticipant:
-                if await is_assistant_in_chat(chat_id):
-                    return True
-
-            except Exception as e:
-                LOGGER.error(f"[Join Attempt Error] {e}")
-
-        if m:
-            await m.reply(sc("Assistant failed to join the chat."))
-        return False
-
-
-    except (UserBannedInChannel, ChannelPrivate):
         try:
-            bot_me = await bot.get_me()
-            bot_member = await bot.get_chat_member(chat_id, bot_me.id)
+            link = await bot.export_chat_invite_link(chat_id)
+            await user.join_chat(link)
+            await asyncio.sleep(2)
 
-            if not (bot_member.privileges and bot_member.privileges.can_restrict_members):
-                if m:
-                    await m.reply(sc("Bot does not have ban/unban rights."))
-                return False
+            if await is_assistant_in_chat(chat_id):
+                return True
 
-            try:
-                member = await bot.get_chat_member(chat_id, ASSISTANT_ID)
-
-                if member.status == ChatMemberStatus.BANNED:
-                    await bot.unban_chat_member(chat_id, ASSISTANT_ID)
-                    await asyncio.sleep(3)
-
-            except Exception as e:
-                LOGGER.error(f"[Unban Check Error] {e}")
-
-            for _ in range(2):
-                try:
-                    link = await bot.export_chat_invite_link(chat_id)
-                    await user.join_chat(link)
-                    await asyncio.sleep(3)
-
-                    if await is_assistant_in_chat(chat_id):
-                        return True
-
-                except Exception as e:
-                    LOGGER.error(f"[Join After Unban Error] {e}")
-
-            if m:
-                await m.reply(sc(
-                    "Assistant is banned or cannot join.\nPlease unban manually."
-                ))
-
-            return False
+        except UserAlreadyParticipant:
+            if await is_assistant_in_chat(chat_id):
+                return True
 
         except Exception as e:
-            LOGGER.error(f"[Auto Unban Error] {e}")
+            LOGGER.error(f"[Join Failed, Trying Unban] {e}")
 
+        if not (bot_member.privileges and bot_member.privileges.can_restrict_members):
             if m:
-                await m.reply(sc(
-                    "Auto unban failed.\nPlease unban assistant manually."
-                ))
-
+                await m.reply(sc("Bot does not have ban/unban rights."))
             return False
 
+        try:
+            await bot.unban_chat_member(chat_id, ASSISTANT_ID)
+            await asyncio.sleep(2)
+        except Exception as e:
+            LOGGER.error(f"[Unban Error] {e}")
+
+        try:
+            link = await bot.export_chat_invite_link(chat_id)
+            await user.join_chat(link)
+            await asyncio.sleep(3)
+
+            if await is_assistant_in_chat(chat_id):
+                return True
+
+        except Exception as e:
+            LOGGER.error(f"[Join After Unban Error] {e}")
+
+        if m:
+            await m.reply(sc(
+                "Assistant could not join.\nPlease unban manually or add it."
+            ))
+
+        return False
 
     except (ChatAdminRequired, PeerIdInvalid):
         if m:
@@ -156,15 +129,13 @@ async def get_ass(chat_id, m=None):
             )
         return False
 
-
     except Exception as e:
         LOGGER.error(f"[Assistant Join Error] {e}")
 
         if m:
-            await m.reply(sc("Assistant is banned or cannot join.\nPlease unban manually."))
+            await m.reply(sc("Failed to bring assistant to the chat."))
 
         return False
-
 
     finally:
         JOINING.discard(chat_id)
