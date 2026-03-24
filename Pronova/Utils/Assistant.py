@@ -32,8 +32,17 @@ async def setup_assistant():
 
 async def is_assistant_in_chat(chat_id):
     try:
-        await bot.get_chat_member(chat_id, ASSISTANT_ID)
+        member = await user.get_chat_member(chat_id, ASSISTANT_ID)
+
+    
+        if member.status == "kicked":
+            return False
+
         return True
+
+    except UserBannedInChannel:
+        return False
+
     except Exception as e:
         print(f"[Assistant Check Error] {e}")
         return False
