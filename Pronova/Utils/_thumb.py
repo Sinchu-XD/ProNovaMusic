@@ -1,3 +1,5 @@
+from Pronova.Utils.Logger import LOGGER  # ✅ ADDED
+
 import os
 import re
 import asyncio
@@ -35,8 +37,8 @@ MAX_TITLE_WIDTH = 580
 
 DEFAULT_THUMB = "https://picsum.photos/1280/720"
 
+
 def trim_to_width(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
-    """Trim text to fit within max width, adding ellipsis if needed."""
     ellipsis = "…"
     if font.getlength(text) <= max_w:
         return text
@@ -49,10 +51,8 @@ def trim_to_width(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
 class Thumbnail:
     def __init__(self):
         try:
-            self.title_font = ImageFont.truetype(
-                "Raleway-Bold.ttf", 32)
-            self.regular_font = ImageFont.truetype(
-                "Inter-Light.ttf", 18)
+            self.title_font = ImageFont.truetype("Raleway-Bold.ttf", 32)
+            self.regular_font = ImageFont.truetype("Inter-Light.ttf", 18)
         except OSError:
             self.title_font = self.regular_font = ImageFont.load_default()
 
@@ -67,9 +67,11 @@ class Thumbnail:
                         raise Exception(f"Invalid Thumb Status: {resp.status}")
 
                     data = await resp.read()
-                    if not data:
-                        raise Exception("Empty image data")
- 
+
+                    # ✅ ADDED CHECK
+                    if not data or len(data) < 5000:
+                        raise Exception("Empty or small image data")
+
                     with open(output_path, "wb") as f:
                         f.write(data)
 
@@ -79,67 +81,75 @@ class Thumbnail:
             async with aiohttp.ClientSession() as session:
                 async with session.get(DEFAULT_THUMB) as resp:
                     data = await resp.read()
-                    with open(output_path, "wb") as f:
-                        f.write(data)
+
+                    # ✅ SAFE WRITE
+                    if data:
+                        with open(output_path, "wb") as f:
+                            f.write(data)
 
         return output_path
-        
+
     async def generate(self, song: Track, size=(1280, 720)) -> str:
-        """Generate thumbnail - downloads async, PIL operations in thread pool"""
         try:
             song_id = hashlib.md5((song.url or song.title).encode()).hexdigest()
-            
+
             temp = f"cache/temp_{song_id}.jpg"
             output = f"cache/{song_id}_modern.png"
-            if os.path.exists(output):
-                return output
 
-            # Download thumbnail (async operation)
+            # ✅ CACHE VALIDATION ADDED
+            if os.path.exists(output):
+                try:
+                    if os.path.getsize(output) > 10000:
+                        return output
+                    else:
+                        LOGGER.warning("Corrupt cache detected, regenerating")
+                        os.remove(output)
+                except Exception as e:
+                    LOGGER.warning(f"Cache check error: {e}")
+
             await self.save_thumb(temp, song.thumb)
-            
-            # **PERFORMANCE FIX**: Run PIL operations in thread executor to avoid blocking event loop
-            # This prevents lag when generating thumbnails for multiple groups simultaneously
+
+            # ✅ TEMP VALIDATION
+            if not os.path.exists(temp) or os.path.getsize(temp) < 5000:
+                raise Exception("Downloaded thumbnail invalid")
+
             return await asyncio.get_event_loop().run_in_executor(
                 None, self._generate_sync, temp, output, song, size
             )
-        except Exception:
+
+        except Exception as e:
+            LOGGER.error(f"Thumbnail generate failed: {e}", exc_info=True)
             return DEFAULT_THUMB
-            
+
     def _generate_sync(self, temp: str, output: str, song: Track, size=(1280, 720)) -> str:
-        """Synchronous PIL operations - runs in thread pool"""
         try:
-            # Prepare base image
             with Image.open(temp) as temp_img:
                 base = temp_img.resize(size).convert("RGBA")
 
-            # Create blurred background
-            bg = ImageEnhance.Brightness(base.filter(
-                ImageFilter.BoxBlur(10))).enhance(0.6)
+            bg = ImageEnhance.Brightness(
+                base.filter(ImageFilter.BoxBlur(10))
+            ).enhance(0.6)
 
-            # Create frosted glass panel
             panel_area = bg.crop(
-                (PANEL_X, PANEL_Y, PANEL_X + PANEL_W, PANEL_Y + PANEL_H))
+                (PANEL_X, PANEL_Y, PANEL_X + PANEL_W, PANEL_Y + PANEL_H)
+            )
             overlay = Image.new("RGBA", (PANEL_W, PANEL_H),
                                 (255, 255, 255, TRANSPARENCY))
             frosted = Image.alpha_composite(panel_area, overlay)
 
-            # Apply rounded corners to panel
             mask = Image.new("L", (PANEL_W, PANEL_H), 0)
             ImageDraw.Draw(mask).rounded_rectangle(
                 (0, 0, PANEL_W, PANEL_H), 50, fill=255)
             bg.paste(frosted, (PANEL_X, PANEL_Y), mask)
 
-            # Add thumbnail with rounded corners
             thumb = base.resize((THUMB_W, THUMB_H))
             tmask = Image.new("L", thumb.size, 0)
             ImageDraw.Draw(tmask).rounded_rectangle(
                 (0, 0, THUMB_W, THUMB_H), 20, fill=255)
             bg.paste(thumb, (THUMB_X, THUMB_Y), tmask)
 
-            # Draw text elements
             draw = ImageDraw.Draw(bg)
 
-            # Clean and display title
             clean_title = re.sub(r"\W+", " ", song.title).title()
             draw.text(
                 (TITLE_X, TITLE_Y),
@@ -148,7 +158,6 @@ class Thumbnail:
                 font=self.title_font
             )
 
-            # Metadata
             draw.text(
                 (TITLE_X, META_Y),
                 f"{song.channel} | {song.views or 'Unknown Views'}",
@@ -156,7 +165,6 @@ class Thumbnail:
                 font=self.regular_font
             )
 
-            # Progress bar
             draw.line([(BAR_X, BAR_Y), (BAR_X + BAR_RED_LEN, BAR_Y)],
                       fill="red", width=6)
             draw.line([(BAR_X + BAR_RED_LEN, BAR_Y),
@@ -164,7 +172,6 @@ class Thumbnail:
             draw.ellipse([(BAR_X + BAR_RED_LEN - 7, BAR_Y - 7),
                          (BAR_X + BAR_RED_LEN + 7, BAR_Y + 7)], fill="red")
 
-            # Time labels
             draw.text((BAR_X, BAR_Y + 15), "00:00",
                       fill="black", font=self.regular_font)
 
@@ -177,23 +184,33 @@ class Thumbnail:
                 font=self.regular_font
             )
 
-            # Control icons (if available)
             icons_path = "HasiiMusic/helpers/play_icons.png"
             if os.path.isfile(icons_path):
                 with Image.open(icons_path) as icons_img:
                     ic = icons_img.resize((ICONS_W, ICONS_H)).convert("RGBA")
                     r, g, b, a = ic.split()
                     black_ic = Image.merge(
-                        "RGBA", (r.point(lambda _: 0), g.point(lambda _: 0), b.point(lambda _: 0), a))
+                        "RGBA",
+                        (r.point(lambda _: 0),
+                         g.point(lambda _: 0),
+                         b.point(lambda _: 0),
+                         a)
+                    )
                     bg.paste(black_ic, (ICONS_X, ICONS_Y), black_ic)
 
-            # Save and cleanup
             bg.save(output)
+
+            # ✅ OUTPUT VALIDATION
+            if not os.path.exists(output) or os.path.getsize(output) < 10000:
+                raise Exception("Generated thumbnail invalid")
+
             try:
                 os.remove(temp)
             except OSError:
                 pass
 
             return output
-        except Exception:
+
+        except Exception as e:
+            LOGGER.error(f"_generate_sync failed: {e}", exc_info=True)
             return DEFAULT_THUMB
