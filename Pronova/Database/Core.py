@@ -33,7 +33,7 @@ async def setup_database():
         (db.chats, "chat_id", True),
         (db.group_stats, "chat_id", True),
         (db.songs_stats, "title", True),
-        (db.group_stats, "chat_id", True),
+ #       (db.group_stats, "chat_id", True),
 
         (db.gbanned, "user_id", True),
         (db.daily, "date", True),
