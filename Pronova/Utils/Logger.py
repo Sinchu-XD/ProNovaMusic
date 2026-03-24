@@ -10,7 +10,7 @@ os.makedirs("logs", exist_ok=True)
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s] - %(name)s - %(message)s"
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.ERROR, 
     format=LOG_FORMAT,
     handlers=[
         logging.StreamHandler(sys.stdout),
@@ -18,15 +18,16 @@ logging.basicConfig(
     ]
 )
 
-logging.getLogger("pyrogram").setLevel(logging.WARNING)
-logging.getLogger("pytgcalls").setLevel(logging.WARNING)
-logging.getLogger("ntgcalls").setLevel(logging.WARNING)
+logging.getLogger("pyrogram").setLevel(logging.ERROR)
+logging.getLogger("pytgcalls").setLevel(logging.ERROR)
+logging.getLogger("ntgcalls").setLevel(logging.ERROR)
 
 LOGGER = logging.getLogger("Pronova")
+LOGGER.setLevel(logging.ERROR)
 
 
 def set_debug(enabled: bool):
     if enabled:
         LOGGER.setLevel(logging.DEBUG)
     else:
-        LOGGER.setLevel(logging.INFO)
+        LOGGER.setLevel(logging.ERROR) 
