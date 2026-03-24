@@ -161,7 +161,7 @@ async def get_ass(chat_id, m=None):
         LOGGER.error(f"[Assistant Join Error] {e}")
 
         if m:
-            await m.reply(sc("Failed to bring assistant to the chat."))
+            await m.reply(sc("Assistant is banned or cannot join.\nPlease unban manually."))
 
         return False
 
