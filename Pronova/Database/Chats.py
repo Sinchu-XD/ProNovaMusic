@@ -1,6 +1,7 @@
 from datetime import datetime
 from .Core import db
 from .Stats import inc_lifetime, inc_daily
+from Pronova.Utils.Logger import LOGGER
 
 
 def _chat_id(chat):
@@ -26,31 +27,20 @@ async def add_chat(chat):
         upsert=True,
     )
 
+
     await db.group_stats.update_one(
         {"chat_id": cid},
         {
             "$setOnInsert": {
                 "chat_id": cid,
-                "users": {},
-                "songs": {},
-                "total": 0
+                "songs": 0,
+                "users": {},   # 👈 for top users
             }
         },
-        upsert=True
+        upsert=True,
     )
 
     if res.upserted_id:
         await inc_lifetime("chats")
         await inc_daily("chats")
-
-
-async def total_chats():
-    return await db.chats.count_documents({})
-
-
-async def get_all_chats():
-    async for c in db.chats.find({}, {"chat_id": 1, "_id": 0}):
-        try:
-            yield int(c["chat_id"])
-        except:
-            continue
+        LOGGER.info(f"New chat added: {cid}")
