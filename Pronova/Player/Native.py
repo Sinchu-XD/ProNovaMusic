@@ -84,7 +84,7 @@ class _NativeEngine:
                 media = MediaStream(
                     media_path=stream,
                     audio_parameters=AudioQuality.STUDIO,
-                    video_parameters=VideoQuality.HD_720p,
+                    video_parameters=VideoQuality.FHD_1080p,
                     ffmpeg_parameters=ffmpeg_params
                 )
             else:
