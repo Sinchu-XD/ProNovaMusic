@@ -4,7 +4,6 @@ from Pronova.Bot.Core import bot, user, engine
 from Pronova.Player import idle
 from Pronova.UI.Plugins import Plugin
 import Pronova.Plugins
-from Pronova.Plugins.Sudo import Sudo, Broadcast, Stats, Bans
 
 async def main():
     await bot.start()
