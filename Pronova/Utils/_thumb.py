@@ -144,7 +144,7 @@ class Thumbnail:
             # Metadata
             draw.text(
                 (TITLE_X, META_Y),
-                f"YouTube | {song.views or 'Unknown Views'}",
+                f"{song.channel} | {song.views or 'Unknown Views'}",
                 fill="black",
                 font=self.regular_font
             )
