@@ -57,6 +57,7 @@ class Thumbnail:
             self.title_font = self.regular_font = ImageFont.load_default()
 
     async def save_thumb(self, output_path: str, url: str) -> str:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
         if not url:
             url = DEFAULT_THUMB
 
