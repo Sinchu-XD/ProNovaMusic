@@ -29,5 +29,7 @@ COMMAND_PREFIX = os.getenv("PREFIX", "/")
 
 COOKIES_PATH = os.getenv("COOKIES_PATH")
 
+LOG_GROUP = os.getenv("LOG_GROUP")
+
 TEXTS = os.getenv("TEXTS", "")
 LINKS = os.getenv("LINKS", "")
