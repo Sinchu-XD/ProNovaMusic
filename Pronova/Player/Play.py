@@ -4,7 +4,7 @@ from traceback import format_exc
 from Pronova.Utils.Queue import SongQueue
 from Pronova.Utils.Logger import LOGGER
 
-LOGGER.setLevel("ERROR")
+#LOGGER.setLevel("ERROR")
 
 class Player:
     def __init__(self, engine):
