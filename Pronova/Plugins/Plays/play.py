@@ -25,19 +25,12 @@ async def safe_delete(m):
 async def register_usage(m):
     if not m.from_user:
         return
+
     try:
         await add_user(m.from_user)
         await add_chat(m.chat)
     except Exception:
         pass
-
-
-async def send_log(text):
-    try:
-        if LOG_GROUP:
-            await bot.send_message(LOG_GROUP, text)
-    except Exception as e:
-        LOGGER.error(f"[LOG ERROR] {e}")
 
 
 async def handle_play(m, force=False, video=False):
@@ -47,8 +40,6 @@ async def handle_play(m, force=False, video=False):
 
     uid = m.from_user.id
     chat_id = m.chat.id
-    chat_title = m.chat.title or "Private Chat"
-    user = m.from_user.mention
 
     if await check_ban(message=m):
         return
@@ -97,19 +88,7 @@ async def handle_play(m, force=False, video=False):
             return await m.reply(sc("unable to play media"))
 
         safe_title = title if title and not str(title).isdigit() else "file"
-
         await inc_song_play(chat_id, uid, safe_title)
-
-#        log_text = f"""
-#🎧 Media Played
-
-#🏷 Chat: {chat_title}
-#🆔 Chat ID: `{chat_id}`
-
-#🎵 Title: {safe_title}
-#👤 Requested By: {user}
-#"""
-#        await send_log(log_text)
         return
 
     if len(m.command) < 2:
@@ -145,21 +124,7 @@ async def handle_play(m, force=False, video=False):
         return await m.reply(sc("unable to play song"))
 
     safe_title = title if title and not str(title).isdigit() else "file"
-
     await inc_song_play(chat_id, uid, safe_title)
-
-#    log_text = f"""
-#🎧 Song Played
-
-#🏷 Chat: {chat_title}
-#🆔 Chat ID: `{chat_id}`
-
-#🔍 Query: {query}
-#🎵 Title: {safe_title}
-
-#👤 Requested By: {user}
-#"""
- #  await send_log(log_text)
 
 
 @bot.on_message(filters.command(["play"]) & filters.group)
