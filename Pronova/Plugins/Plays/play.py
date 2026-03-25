@@ -1,6 +1,7 @@
+Isme Gc log msg send add karna h ki kaha play Hua and konsa song ye sab
+
 from pyrogram import filters
 from traceback import format_exc
-import asyncio
 
 from Config import *
 
@@ -19,26 +20,19 @@ from Pronova.Database import is_admin_only
 async def safe_delete(m):
     try:
         await m.delete()
-    except Exception as e:
-        LOGGER.error(f"Delete Error: {e}")
+    except Exception:
+        pass
 
 
 async def register_usage(m):
     if not m.from_user:
         return
+
     try:
         await add_user(m.from_user)
         await add_chat(m.chat)
-    except Exception as e:
-        LOGGER.error(f"Register Error: {e}")
-
-
-async def send_log(text):
-    try:
-        if LOG_GROUP:
-            await bot.send_message(LOG_GROUP, text)
-    except Exception as e:
-        LOGGER.error(f"LOG SEND ERROR: {e}")
+    except Exception:
+        pass
 
 
 async def handle_play(m, force=False, video=False):
@@ -48,21 +42,11 @@ async def handle_play(m, force=False, video=False):
 
     uid = m.from_user.id
     chat_id = m.chat.id
-    chat_title = m.chat.title or "Private Chat"
-    user = m.from_user.mention
 
-    try:
-        if await check_ban(message=m):
-            return
-    except Exception as e:
-        LOGGER.error(f"Ban Check Error: {e}")
+    if await check_ban(message=m):
         return
 
-    try:
-        mode = await is_admin_only(chat_id)
-    except Exception as e:
-        LOGGER.error(f"Admin Mode Error: {e}")
-        mode = False
+    mode = await is_admin_only(chat_id)
 
     if force:
         if not await admin_only(bot, message=m):
@@ -72,18 +56,14 @@ async def handle_play(m, force=False, video=False):
             if not await admin_only(bot, message=m):
                 return
 
-    try:
-        if not await get_ass(chat_id, m):
-            return
-    except Exception as e:
-        LOGGER.error(f"Assistant Error: {e}")
+    if not await get_ass(chat_id, m):
         return
 
     if force:
         try:
             await engine.vc.stop(chat_id)
         except Exception as e:
-            LOGGER.error(f"Force Stop Error: {e}")
+            LOGGER.error(f"[Force Stop Error] {e}")
 
     reply = m.reply_to_message
 
@@ -91,15 +71,14 @@ async def handle_play(m, force=False, video=False):
 
         try:
             path = await reply.download()
-        except Exception as e:
-            LOGGER.error(f"Download Error: {e}")
+        except Exception:
             return await m.reply(sc("download failed"))
 
         try:
             song, title = await engine.vc.play_file(
                 chat_id,
                 path,
-                user,
+                m.from_user.mention,
                 reply=reply,
                 video=video
             )
@@ -108,27 +87,10 @@ async def handle_play(m, force=False, video=False):
             return await m.reply(sc(f"❌ Media Play Error:\n{e}"))
 
         if not song:
-            LOGGER.error("Play File Returned Empty Stream")
-            return await m.reply(sc("Play File Returned Empty Stream"))
+            return await m.reply(sc("unable to play media"))
 
-        safe_title = title if title else "Unknown"
-
-        try:
-            await inc_song_play(chat_id, uid, safe_title)
-        except Exception as e:
-            LOGGER.error(f"DB Error: {e}")
-
-        log_text = f"""
-🎧 Media Played
-
-🏷 Chat: {chat_title}
-🆔 Chat ID: `{chat_id}`
-
-🎵 Title: {safe_title}
-👤 Requested By: {user}
-"""
-
-        asyncio.create_task(send_log(log_text))
+        safe_title = title if title and not str(title).isdigit() else "file"
+        await inc_song_play(chat_id, uid, safe_title)
         return
 
     if len(m.command) < 2:
@@ -140,9 +102,10 @@ async def handle_play(m, force=False, video=False):
         song, title = await engine.vc.play(
             chat_id,
             query,
-            user,
+            m.from_user.mention,
             video=video
         )
+
     except Exception as e:
         LOGGER.error(format_exc())
 
@@ -160,29 +123,10 @@ async def handle_play(m, force=False, video=False):
         return await m.reply(sc(f"❌ Error:\n{err}"))
 
     if not song:
-        LOGGER.error("Play Returned Empty Stream")
-        return await m.reply(sc("Play File Returned Empty Stream"))
+        return await m.reply(sc("unable to play song"))
 
-    safe_title = title if title else "Unknown"
-
-    try:
-        await inc_song_play(chat_id, uid, safe_title)
-    except Exception as e:
-        LOGGER.error(f"DB Error: {e}")
-
-    log_text = f"""
-🎧 Song Played
-
-🏷 Chat: {chat_title}
-🆔 Chat ID: `{chat_id}`
-
-🔍 Query: {query}
-🎵 Title: {safe_title}
-
-👤 Requested By: {user}
-"""
-
-    asyncio.create_task(send_log(log_text))
+    safe_title = title if title and not str(title).isdigit() else "file"
+    await inc_song_play(chat_id, uid, safe_title)
 
 
 @bot.on_message(filters.command(["play"]) & filters.group)
