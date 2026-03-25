@@ -1,0 +1,11 @@
+YouTubeMusic
+pytz
+motor
+pymongo
+tgcrypto
+pyrofork
+yt-dlp[default]
+aiohttp
+py-tgcalls
+pillow
+aiofiles
