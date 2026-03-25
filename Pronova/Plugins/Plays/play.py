@@ -85,7 +85,7 @@ async def handle_play(m, force=False, video=False):
             song, title = await engine.vc.play_file(
                 chat_id,
                 path,
-                user,
+                m.from_user.mention,
                 reply=reply,
                 video=video
             )
@@ -121,7 +121,7 @@ async def handle_play(m, force=False, video=False):
         song, title = await engine.vc.play(
             chat_id,
             query,
-            user,
+            m.from_user.mention,
             video=video
         )
 
