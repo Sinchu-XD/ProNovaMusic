@@ -1,13 +1,17 @@
 FROM python:3.13-slim
 
-# Install system dependencies
+# Install system dependencies + Node.js 20
 RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    nodejs \
-    npm \
-    git \
     curl \
+    git \
+    ffmpeg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g npm@latest \
     && rm -rf /var/lib/apt/lists/*
+
+# Verify installations (optional but useful for debugging)
+RUN node -v && npm -v && ffmpeg -version
 
 # Set working directory
 WORKDIR /app
