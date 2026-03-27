@@ -249,7 +249,7 @@ def format_live(data):
 
 @bot.on_message(filters.command("cricket"))
 async def start(client, message):
-    if not await admin_only(client, message, notify=True):
+    if not await admin_only(client, message):
         return
     await message.reply_text("🏏 PRONOVA CRICKET BOT\n\nSelect Option:",
                              reply_markup=main_menu())
@@ -258,7 +258,7 @@ async def start(client, message):
 
 @bot.on_callback_query()
 async def cb(client, query):
-    if not await admin_only(client, query.message, notify=True):
+    if not await admin_only(client, query.message):
         return
     d = query.data
 
