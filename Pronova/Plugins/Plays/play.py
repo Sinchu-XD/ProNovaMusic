@@ -34,9 +34,8 @@ async def register_usage(m):
 async def send_gc_log(text: str):
     try:
         await bot.send_message(LOG_CHAT_ID, text, parse_mode="html")
-    except:
-        pass
-
+    except Exception as e:
+        print("LOG ERROR:", e)
 
 def play_log(m, title):
     try:
