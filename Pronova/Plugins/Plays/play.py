@@ -7,7 +7,6 @@ from Pronova.Bot import bot, engine
 from Pronova.Utils.Assistant import get_ass
 from Pronova.Utils.Font import sc
 from Pronova.Utils.Allow import admin_only, check_ban
-from Pronova.Utils.Logger import LOGGER
 
 from Pronova.Database.Songs import inc_song_play
 from Pronova.Database.Users import add_user
@@ -25,12 +24,33 @@ async def safe_delete(m):
 async def register_usage(m):
     if not m.from_user:
         return
-
     try:
         await add_user(m.from_user)
         await add_chat(m.chat)
     except Exception:
         pass
+
+
+async def send_gc_log(text: str):
+    try:
+        await bot.send_message(LOG_CHAT_ID, text, parse_mode="html")
+    except:
+        pass
+
+
+def play_log(m, title):
+    try:
+        user = m.from_user.mention
+        chat = f"{m.chat.title} (<code>{m.chat.id}</code>)"
+
+        return (
+            f"🎧 <b>PLAY LOG</b>\n\n"
+            f"<b>User:</b> {user}\n"
+            f"<b>Chat:</b> {chat}\n"
+            f"<b>Song:</b> {title}"
+        )
+    except:
+        return f"🎧 <b>PLAY LOG</b>\n\n<b>Song:</b> {title}"
 
 
 async def handle_play(m, force=False, video=False):
@@ -60,8 +80,8 @@ async def handle_play(m, force=False, video=False):
     if force:
         try:
             await engine.vc.stop(chat_id)
-        except Exception as e:
-            LOGGER.error(f"[Force Stop Error] {e}")
+        except:
+            pass
 
     reply = m.reply_to_message
 
@@ -69,7 +89,7 @@ async def handle_play(m, force=False, video=False):
 
         try:
             path = await reply.download()
-        except Exception:
+        except:
             return await m.reply(sc("download failed"))
 
         try:
@@ -81,13 +101,15 @@ async def handle_play(m, force=False, video=False):
                 video=video
             )
         except Exception as e:
-            LOGGER.error(format_exc())
             return await m.reply(sc(f"❌ Media Play Error:\n{e}"))
 
         if not song:
             return await m.reply(sc("unable to play media"))
 
         safe_title = title if title and not str(title).isdigit() else "file"
+
+        await send_gc_log(play_log(m, safe_title))
+
         await inc_song_play(chat_id, uid, safe_title)
         return
 
@@ -105,8 +127,6 @@ async def handle_play(m, force=False, video=False):
         )
 
     except Exception as e:
-        LOGGER.error(format_exc())
-
         err = str(e)
 
         if "CHANNEL_PRIVATE" in err:
@@ -124,6 +144,9 @@ async def handle_play(m, force=False, video=False):
         return await m.reply(sc("unable to play song"))
 
     safe_title = title if title and not str(title).isdigit() else "file"
+
+    await send_gc_log(play_log(m, safe_title))
+
     await inc_song_play(chat_id, uid, safe_title)
 
 
