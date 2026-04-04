@@ -1,6 +1,6 @@
 from pyrogram import filters
 from traceback import format_exc
-
+import html
 from Config import *
 
 from Pronova.Bot import bot, engine
@@ -37,7 +37,7 @@ async def send_gc_log(text: str):
         await bot.send_message(
             chat_id=LOG_CHAT_ID,
             text=text,
-            parse_mode="html",
+            parse_mode="HTML",
             disable_web_page_preview=True
         )
     except Exception as e:
@@ -47,18 +47,18 @@ async def send_gc_log(text: str):
 def play_log(m, title):
     try:
         user = m.from_user.mention
-        chat = f"{m.chat.title} (<code>{m.chat.id}</code>)"
+        chat_title = html.escape(m.chat.title or "Private Chat")
+        song = html.escape(title)
 
         return (
             f"🎧 <b>PLAY LOG</b>\n\n"
             f"<b>User:</b> {user}\n"
-            f"<b>Chat:</b> {chat}\n"
-            f"<b>Song:</b> {title}"
+            f"<b>Chat:</b> {chat_title} (<code>{m.chat.id}</code>)\n"
+            f"<b>Song:</b> {song}"
         )
     except Exception as e:
         LOGGER.error(f"Log Format Error: {e}")
-        return f"🎧 <b>PLAY LOG</b>\n\n<b>Song:</b> {title}"
-
+        return f"🎧 <b>PLAY LOG</b>\n\n<b>Song:</b> {html.escape(title)}"
 
 async def handle_play(m, force=False, video=False):
 
