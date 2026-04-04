@@ -7,6 +7,7 @@ from Pronova.Bot import bot, engine
 from Pronova.Utils.Assistant import get_ass
 from Pronova.Utils.Font import sc
 from Pronova.Utils.Allow import admin_only, check_ban
+from Pronova.Utils.Logger import LOGGER
 
 from Pronova.Database.Songs import inc_song_play
 from Pronova.Database.Users import add_user
@@ -17,8 +18,8 @@ from Pronova.Database import is_admin_only
 async def safe_delete(m):
     try:
         await m.delete()
-    except Exception:
-        pass
+    except Exception as e:
+        LOGGER.error(f"Delete Error: {e}")
 
 
 async def register_usage(m):
@@ -27,15 +28,21 @@ async def register_usage(m):
     try:
         await add_user(m.from_user)
         await add_chat(m.chat)
-    except Exception:
-        pass
+    except Exception as e:
+        LOGGER.error(f"Register Error: {e}")
 
 
 async def send_gc_log(text: str):
     try:
-        await bot.send_message(LOG_CHAT_ID, text, parse_mode="html")
+        await bot.send_message(
+            chat_id=LOG_CHAT_ID,
+            text=text,
+            parse_mode="html",
+            disable_web_page_preview=True
+        )
     except Exception as e:
-        print("LOG ERROR:", e)
+        LOGGER.error(f"GC LOG SEND FAILED: {e}")
+
 
 def play_log(m, title):
     try:
@@ -48,7 +55,8 @@ def play_log(m, title):
             f"<b>Chat:</b> {chat}\n"
             f"<b>Song:</b> {title}"
         )
-    except:
+    except Exception as e:
+        LOGGER.error(f"Log Format Error: {e}")
         return f"🎧 <b>PLAY LOG</b>\n\n<b>Song:</b> {title}"
 
 
@@ -79,8 +87,8 @@ async def handle_play(m, force=False, video=False):
     if force:
         try:
             await engine.vc.stop(chat_id)
-        except:
-            pass
+        except Exception as e:
+            LOGGER.error(f"Force Stop Error: {e}")
 
     reply = m.reply_to_message
 
@@ -88,7 +96,8 @@ async def handle_play(m, force=False, video=False):
 
         try:
             path = await reply.download()
-        except:
+        except Exception as e:
+            LOGGER.error(f"Download Error: {e}")
             return await m.reply(sc("download failed"))
 
         try:
@@ -100,6 +109,7 @@ async def handle_play(m, force=False, video=False):
                 video=video
             )
         except Exception as e:
+            LOGGER.error(format_exc())
             return await m.reply(sc(f"❌ Media Play Error:\n{e}"))
 
         if not song:
@@ -124,8 +134,9 @@ async def handle_play(m, force=False, video=False):
             m.from_user.mention,
             video=video
         )
-
     except Exception as e:
+        LOGGER.error(format_exc())
+
         err = str(e)
 
         if "CHANNEL_PRIVATE" in err:
@@ -144,7 +155,10 @@ async def handle_play(m, force=False, video=False):
 
     safe_title = title if title and not str(title).isdigit() else "file"
 
-    await send_gc_log(play_log(m, safe_title))
+    try:
+        await send_gc_log(play_log(m, safe_title))
+    except Exception as e:
+        LOGGER.error(f"Final Log Error: {e}")
 
     await inc_song_play(chat_id, uid, safe_title)
 
