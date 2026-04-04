@@ -1,4 +1,4 @@
-YouTubeMusic
+YouTubeMusic==2026.4.7
 pytz
 motor
 pymongo
