@@ -2,18 +2,12 @@ import re
 import os
 import asyncio
 import inspect
+import time
 from traceback import format_exc
 
 from YouTubeMusic.Search import Search
 from YouTubeMusic.Stream import get_stream, get_video_stream
 from YouTubeMusic.Playlist import get_playlist_songs
-
-from Pronova.Database.YouTube import (
-    get_stream_cache,
-    set_stream_cache,
-    get_search_cache,
-    set_search_cache
-)
 
 from Pronova.Utils.Logger import LOGGER
 from Config import COOKIES_PATH
@@ -21,6 +15,10 @@ from Config import COOKIES_PATH
 
 PLAYLIST_REGEX = re.compile(r"(list=)")
 YOUTUBE_REGEX = re.compile(r"(youtube\.com|youtu\.be|music\.youtube\.com)")
+
+
+STREAM_CACHE = {}
+CACHE_TTL = 3600
 
 
 def yt_thumbnail(url):
@@ -62,13 +60,28 @@ def format_duration(d):
         return "0:00"
 
 
+def get_cache(key):
+    data = STREAM_CACHE.get(key)
+    if not data:
+        return None
+    stream, exp = data
+    if time.time() > exp:
+        STREAM_CACHE.pop(key, None)
+        return None
+    return stream
+
+
+def set_cache(key, value):
+    STREAM_CACHE[key] = (value, time.time() + CACHE_TTL)
+
+
 async def safe_extract(extractor, url, cookies):
     for _ in range(3):
         try:
             if inspect.iscoroutinefunction(extractor):
                 return await extractor(url, cookies)
             return await asyncio.to_thread(extractor, url, cookies)
-        except Exception:
+        except:
             await asyncio.sleep(1)
     return None
 
@@ -116,7 +129,7 @@ async def resolve(query, video=False, user_id=None):
         result = await process(item, item.get("url"), extractor, cookies, video, user_id)
         return [result] if result else None
 
-    except Exception:
+    except:
         LOGGER.error(format_exc())
         return None
 
@@ -128,7 +141,7 @@ async def process(item, url, extractor, cookies, video, user_id):
 
         key = f"{url}_{video}"
 
-        stream = await get_stream_cache(key)
+        stream = get_cache(key)
 
         if not stream:
             stream = await safe_extract(extractor, url, cookies)
@@ -140,7 +153,7 @@ async def process(item, url, extractor, cookies, video, user_id):
                 LOGGER.error(f"[FINAL EXTRACT FAIL] {url}")
                 return None
 
-            await set_stream_cache(key, stream)
+            set_cache(key, stream)
 
         return clean({
             "title": item.get("title"),
@@ -158,7 +171,7 @@ async def process(item, url, extractor, cookies, video, user_id):
             }
         })
 
-    except Exception:
+    except:
         LOGGER.error(format_exc())
         return None
 
@@ -187,10 +200,10 @@ async def get_valid_stream(song):
         stream = first["stream"]
         song["stream"] = stream
 
-        await set_stream_cache(f"{song['url']}_{song['is_video']}", stream)
+        set_cache(f"{song['url']}_{song['is_video']}", stream)
 
         return stream
 
-    except Exception:
+    except:
         LOGGER.error(format_exc())
         return None
