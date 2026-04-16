@@ -45,10 +45,10 @@ async def handle_play(m, force=False, video=False):
     chat_id = m.chat.id
 
     
-    try:
-        await bot.send_sticker(chat_id, STICKER_ID)
-    except:
-        pass
+   # try:
+  #      await bot.send_sticker(chat_id, STICKER_ID)
+  #  except:
+   #     pass
 
     if await check_ban(message=m):
         return
