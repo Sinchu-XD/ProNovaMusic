@@ -136,7 +136,7 @@ def control_buttons():
             [
                 InlineKeyboardButton("▷", callback_data="vc_resume", style=ButtonStyle.SUCCESS),
                 InlineKeyboardButton("II", callback_data="vc_pause", style=ButtonStyle.PRIMARY),
-                InlineKeyboardButton("↺", callback_data="vc_replay", style=ButtonStyle.DANGER),
+                InlineKeyboardButton("I‣‣", callback_data="vc_previous", style=ButtonStyle.DANGER),
                 InlineKeyboardButton("‣‣I", callback_data="vc_skip", style=ButtonStyle.PRIMARY),
                 InlineKeyboardButton("▢", callback_data="vc_end", style=ButtonStyle.SUCCESS),
             ],
