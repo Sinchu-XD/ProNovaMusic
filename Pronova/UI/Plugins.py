@@ -121,38 +121,47 @@ def control_buttons():
         texts = os.getenv("TEXTS")
         links = os.getenv("LINKS")
 
-        buttons = [[
-            InlineKeyboardButton("▷", callback_data="vc_resume", style=ButtonStyle.SUCCESS),
-            InlineKeyboardButton("II", callback_data="vc_pause", style=ButtonStyle.PRIMARY),
-            InlineKeyboardButton("▢", callback_data="vc_end", style=ButtonStyle.DANGER),
-            InlineKeyboardButton("‣‣I", callback_data="vc_skip", style=ButtonStyle.PRIMARY),
-        ]]
+        promo_text = "ᴏᴡɴᴇʀ"
+        promo_link = "https://t.me/WtfShia"
 
         if texts and links:
             text_list = [t.strip() for t in texts.split(",")]
             link_list = [l.strip() for l in links.split(",")]
+            if text_list and link_list:
+                promo_text = text_list[0]
+                promo_link = link_list[0]
 
-            dynamic_styles = [ButtonStyle.PRIMARY, ButtonStyle.SUCCESS, ButtonStyle.DANGER]
-            
+        buttons = [
+            [InlineKeyboardButton("00:00 ▬▬▬▬▬▬▬▬▬▬ 00:00", callback_data="dummy_progress", style=ButtonStyle.PRIMARY)],
+            [
+                InlineKeyboardButton("▷", callback_data="vc_resume", style=ButtonStyle.SUCCESS),
+                InlineKeyboardButton("II", callback_data="vc_pause", style=ButtonStyle.PRIMARY),
+                InlineKeyboardButton("↺", callback_data="vc_replay", style=ButtonStyle.DANGER),
+                InlineKeyboardButton("‣‣I", callback_data="vc_skip", style=ButtonStyle.PRIMARY),
+                InlineKeyboardButton("▢", callback_data="vc_end", style=ButtonStyle.SUCCESS),
+            ],
+            [
+                InlineKeyboardButton("⋖ - 𝟤𝟢 ꜱ", callback_data="seek_back", style=ButtonStyle.PRIMARY),
+                InlineKeyboardButton(promo_text, url=promo_link, style=ButtonStyle.SUCCESS),
+                InlineKeyboardButton("𝟤𝟢 ꜱ + ⋗", callback_data="seek_forward", style=ButtonStyle.PRIMARY),
+            ],
+        ]
+
+        if texts and links and len(text_list) > 1:
             row = []
-            button_count = 0
-
-            for t, l in zip(text_list, link_list):
+            for t, l in zip(text_list[1:], link_list[1:]):
                 if t and l:
-                    current_style = dynamic_styles[button_count] if button_count < len(dynamic_styles) else ButtonStyle.PRIMARY
-                    row.append(InlineKeyboardButton(t, url=l, style=current_style))
-                    button_count += 1
-
+                    row.append(InlineKeyboardButton(t, url=l, style=ButtonStyle.PRIMARY))
                     if len(row) == 2:
                         buttons.append(row)
                         row = []
-
             if row:
                 buttons.append(row)
 
         return InlineKeyboardMarkup(buttons)
 
     except Exception as e:
+        from Pronova.Utils.Logger import LOGGER
         LOGGER.error(f"Error in control_buttons: {e}", exc_info=True)
         return InlineKeyboardMarkup([])
 
