@@ -7,6 +7,7 @@ import re
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, MessageEntity
 from pyrogram import enums
+from pyrogram.enums import ButtonStyle
 
 from Pronova.Utils.Thumbnail import get_thumb
 from Pronova.Utils._thumb import Thumbnail
@@ -120,10 +121,10 @@ def control_buttons():
         links = os.getenv("LINKS")
 
         buttons = [[
-            InlineKeyboardButton("▷", callback_data="vc_resume", style="success"),
-            InlineKeyboardButton("II", callback_data="vc_pause"),
-            InlineKeyboardButton("▢", callback_data="vc_end"),
-            InlineKeyboardButton("‣‣I", callback_data="vc_skip"),
+            InlineKeyboardButton("▷", callback_data="vc_resume", style=ButtonStyle.SUCCESS),
+            InlineKeyboardButton("II", callback_data="vc_pause", style=ButtonStyle.PRIMARY),
+            InlineKeyboardButton("▢", callback_data="vc_end", style=ButtonStyle.DANGER),
+            InlineKeyboardButton("‣‣I", callback_data="vc_skip", style=ButtonStyle.PRIMARY),
         ]]
 
         if texts and links:
@@ -146,9 +147,9 @@ def control_buttons():
         return InlineKeyboardMarkup(buttons)
 
     except Exception as e:
+        from Pronova.Utils.Logger import LOGGER
         LOGGER.error(f"Error in control_buttons: {e}", exc_info=True)
         return InlineKeyboardMarkup([])
-
 
 class Plugin:
     name = "base"
