@@ -121,9 +121,6 @@ def control_buttons():
         texts = os.getenv("TEXTS")
         links = os.getenv("LINKS")
 
-        promo_text = "ᴏᴡɴᴇʀ"
-        promo_link = "https://t.me/WtfShia"
-
         if texts and links:
             text_list = [t.strip() for t in texts.split(",")]
             link_list = [l.strip() for l in links.split(",")]
@@ -142,7 +139,7 @@ def control_buttons():
             ],
             [
                 InlineKeyboardButton("⋖ - 𝟤𝟢 ꜱ", callback_data="seek_back", style=ButtonStyle.PRIMARY),
-                InlineKeyboardButton(promo_text, url=promo_link, style=ButtonStyle.SUCCESS),
+                InlineKeyboardButton("ᴏᴡɴᴇʀ", url="https://t.me/WtfShia", style=ButtonStyle.SUCCESS),
                 InlineKeyboardButton("𝟤𝟢 ꜱ + ⋗", callback_data="seek_forward", style=ButtonStyle.PRIMARY),
             ],
         ]
