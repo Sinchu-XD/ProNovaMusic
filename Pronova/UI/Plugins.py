@@ -131,7 +131,7 @@ def control_buttons():
                 InlineKeyboardButton("𝟤𝟢 ꜱ + ⋗", callback_data="seek_forward", style=ButtonStyle.DANGER),
             ],
             [
-                InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url="https://t.me/PronovaSupport", style=ButtonStyle.SUCCESS),
+                InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url="https://t.me/PronovaSupport", style=ButtonStyle.DANGER),
                 InlineKeyboardButton("Uᴘᴅᴀᴛᴇꜱ", url="https://t.me/ProNovaUpdates", style=ButtonStyle.PRIMARY)
             ]
         ]
