@@ -187,7 +187,7 @@ class Plugin:
         try:
             from Pronova.Bot import engine
             while True:
-                await asyncio.sleep(7)
+                await asyncio.sleep(15)
                 
                 current_time = engine.vc.player.current_time(chat_id)
 
