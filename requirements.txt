@@ -1,4 +1,4 @@
-YouTubeMusic==2026.4.7
+YouTubeMusic
 pytz
 motor
 pymongo
@@ -9,3 +9,4 @@ py-tgcalls
 pillow
 aiofiles
 python-dotenv
+kurigram
