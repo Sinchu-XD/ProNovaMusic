@@ -36,20 +36,23 @@ async def setup_assistant():
 
 async def is_assistant_in_chat(chat_id):
     try:
-        
-        await user.get_chat(chat_id)
+        # 🔥 resolve chat first
+        chat = await user.get_chat(chat_id)
 
-        member = await user.get_chat_member(chat_id, ASSISTANT_ID)
+        member = await user.get_chat_member(chat.id, ASSISTANT_ID)
 
-        if member.status in (
+        return member.status not in (
             ChatMemberStatus.LEFT,
             ChatMemberStatus.BANNED
-        ):
-            return False
+        )
 
-        return True
+    except UserNotParticipant:
+        return False
 
-    except (UserNotParticipant, UserBannedInChannel, ChannelPrivate):
+    except UserBannedInChannel:
+        return False
+
+    except ChannelPrivate:
         return False
 
     except Exception as e:
