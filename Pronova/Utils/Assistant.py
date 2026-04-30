@@ -36,6 +36,9 @@ async def setup_assistant():
 
 async def is_assistant_in_chat(chat_id):
     try:
+        
+        await user.get_chat(chat_id)
+
         member = await user.get_chat_member(chat_id, ASSISTANT_ID)
 
         if member.status in (
@@ -52,8 +55,7 @@ async def is_assistant_in_chat(chat_id):
     except Exception as e:
         LOGGER.error(f"[Assistant Check Error] {e}")
         return False
-
-
+        
 async def get_ass(chat_id, m=None):
     global ASSISTANT_ID
 
