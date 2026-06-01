@@ -1,0 +1,49 @@
+{
+  "name": "ProNova Music Bot",
+  "description": "Telegram VC Music Bot",
+  "repository": "https://github.com/Sinchu-xD/PronovaMusic",
+  "logo": "https://telegra.ph/file/7e2b5a2a0c7f4f9f9c2b8.jpg",
+  "keywords": [
+    "telegram",
+    "musicbot",
+    "pyrogram",
+    "vcbot"
+  ],
+  "env": {
+    "API_ID": {
+      "description": "Telegram API ID",
+      "required": true
+    },
+    "API_HASH": {
+      "description": "Telegram API HASH",
+      "required": true
+    },
+    "BOT_TOKEN": {
+      "description": "Telegram Bot Token",
+      "required": true
+    },
+    "SESSION_STRING": {
+      "description": "Pyrogram Session String",
+      "required": true
+    },
+    "MONGO_URL": {
+      "description": "MongoDB URL",
+      "required": true
+    },
+    "OWNER_ID": {
+      "description": "Owner Telegram ID",
+      "required": true
+    }
+  },
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
+}

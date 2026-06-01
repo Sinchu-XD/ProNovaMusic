@@ -1,0 +1,11 @@
+kurigram
+py-tgcalls
+motor
+pymongo
+python-dotenv
+Pillow
+aiohttp
+aiofiles
+YouTubeMusic
+tgcrypto
+psutil
